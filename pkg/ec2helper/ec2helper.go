@@ -304,17 +304,15 @@ func (h *EC2Helper) GetInstanceTypesFromInstanceSelector(instanceSelector Instan
 		return nil, errors.New("Invalid memory: " + fmt.Sprint(memoryGib))
 	}
 
-	vcpusLower, vcpusUpper := vcpus-1, vcpus+1
-	memoryLower, memoryUpper := uint64(memoryGib-1), uint64(memoryGib+1)
+	vcpusLower := vcpus
+	memoryLower := uint64(memoryGib)
 
 	// Create filters for filtering instance types
 	vcpusRange := selector.IntRangeFilter{
 		LowerBound: vcpusLower,
-		UpperBound: vcpusUpper,
 	}
 	memoryRange := selector.ByteQuantityRangeFilter{
 		LowerBound: bytequantity.FromGiB(memoryLower),
-		UpperBound: bytequantity.FromGiB(memoryUpper),
 	}
 
 	// Create a Filter struct with criteria you would like to filter
@@ -1114,7 +1112,7 @@ func (h *EC2Helper) LaunchSpotInstance(simpleConfig *config.SimpleInfo, detailed
 	if confirmation {
 		fmt.Println("Options confirmed! Launching spot instance...")
 		if simpleConfig.LaunchTemplateId != "" {
-			_, err = h.LaunchFleet(simpleConfig, &simpleConfig.LaunchTemplateId)
+			_, err = h.LaunchFleet(&simpleConfig.LaunchTemplateId)
 		} else {
 			template, err := h.CreateLaunchTemplate(simpleConfig, detailedConfig)
 			if err != nil {
@@ -1125,7 +1123,7 @@ func (h *EC2Helper) LaunchSpotInstance(simpleConfig *config.SimpleInfo, detailed
 				}
 				return err
 			}
-			_, err = h.LaunchFleet(simpleConfig, template.LaunchTemplateId)
+			_, err = h.LaunchFleet(template.LaunchTemplateId)
 			err = h.DeleteLaunchTemplate(template.LaunchTemplateId)
 		}
 	} else {
@@ -1439,17 +1437,15 @@ func (h *EC2Helper) DeleteLaunchTemplate(templateId *string) error {
 	return err
 }
 
-func (h *EC2Helper) LaunchFleet(simpleConfig *config.SimpleInfo, templateId *string) (*ec2.CreateFleetOutput, error) {
+func (h *EC2Helper) LaunchFleet(templateId *string) (*ec2.CreateFleetOutput, error) {
 	fleetTemplateSpecs := &ec2.FleetLaunchTemplateSpecificationRequest{
 		LaunchTemplateId: templateId,
 		Version:          aws.String("$Latest"),
 	}
 
-	overrides, err := h.createLaunchOverrides(simpleConfig)
 	fleetTemplateConfig := []*ec2.FleetLaunchTemplateConfigRequest{
 		{
 			LaunchTemplateSpecification: fleetTemplateSpecs,
-			Overrides:                   overrides,
 		},
 	}
 
@@ -1472,6 +1468,7 @@ func (h *EC2Helper) LaunchFleet(simpleConfig *config.SimpleInfo, templateId *str
 	}
 
 	result, err := h.Svc.CreateFleet(input)
+	fmt.Printf("Errors: %#v\n Length: %d", result.Errors, len(result.Instances))
 
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -1490,42 +1487,4 @@ func (h *EC2Helper) LaunchFleet(simpleConfig *config.SimpleInfo, templateId *str
 	}
 
 	return result, err
-}
-
-func (h *EC2Helper) createLaunchOverrides(simpleConfig *config.SimpleInfo) ([]*ec2.FleetLaunchTemplateOverridesRequest, error) {
-	usageClass := strings.ToLower(simpleConfig.CapacityType)
-
-	filter := selector.Filters{
-		Region:           &simpleConfig.Region,
-		InstanceTypeBase: &simpleConfig.InstanceType,
-		UsageClass:       &usageClass,
-	}
-
-	selector := selector.New(session.New())
-	overrideInstances, err := selector.FilterVerbose(filter)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(overrideInstances) == 0 {
-		return nil, errors.New("No similar instances found")
-	}
-
-	overrides := []*ec2.FleetLaunchTemplateOverridesRequest{}
-	for index, instance := range overrideInstances {
-		priority := float64(index)
-		overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{
-			InstanceType: instance.InstanceType,
-			Priority:     &priority,
-			SubnetId:     &simpleConfig.SubnetId,
-		})
-	}
-	// priority := float64(0)
-	// overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{
-	// 	InstanceType: &simpleConfig.InstanceType,
-	// 	Priority:     &priority,
-	// 	SubnetId:     &simpleConfig.SubnetId,
-	// })
-	return overrides, nil
 }
