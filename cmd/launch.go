@@ -208,6 +208,8 @@ func launchNonInteractive(h *ec2helper.EC2Helper) {
 		}
 	}
 
+	h.ChangeRegion(simpleConfig.Region)
+
 	// Override config with flags if applicable
 	config.OverrideConfigWithFlags(simpleConfig, flagConfig)
 
@@ -225,10 +227,12 @@ func launchNonInteractive(h *ec2helper.EC2Helper) {
 	}
 
 	// Parse the simple string config to the detailed config with data structures for later use
+	fmt.Println("Test1")
 	detailedConfig, err := h.ParseConfig(simpleConfig)
 	if cli.ShowError(err, "Parsing config failed") {
 		return
 	}
+	fmt.Println("Test2")
 
 	confirmation := question.AskConfirmationWithInput(simpleConfig, detailedConfig, false)
 
