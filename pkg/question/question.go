@@ -347,7 +347,7 @@ func AskIfEnterInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) 
 	data := [][]string{{"Enter the instance type"}, {"Provide vCPUs and memory information for advice"},
 		{fmt.Sprintf("Use the default instance type, [%s]", *defaultOption)}}
 	indexedOptions := []string{cli.ResponseYes, cli.ResponseNo, *defaultOption}
-	question := "Select the method for instance selection:"
+	question := "How do you want to choose the instance type?"
 
 	model := &questionModel.SingleSelectList{}
 	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
