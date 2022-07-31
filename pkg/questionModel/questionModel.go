@@ -54,11 +54,14 @@ var (
 // CheckInput is used to validate a given string using validation methods from ec2helper
 type CheckInput func(*ec2helper.EC2Helper, string) bool
 
+type Row [][]string
+
 // QuestionInput represents input that can be used to initialize each question
 type QuestionInput struct {
-	DefaultOption     string               // Defaulted set/selected answer
-	DefaultOptionList []string             // List of default selected answers
-	OptionData        [][]string           // Data used to fill in question tables
+	DefaultOption     string     // Defaulted set/selected answer
+	DefaultOptionList []string   // List of default selected answers
+	OptionData        [][]string // Data used to fill in question tables
+	Rows              []Row
 	HeaderStrings     []string             // List of headers for question tables
 	IndexedOptions    []string             // List of values to be returned when selected index in a list is chosen
 	QuestionString    string               // The Question being asked
@@ -127,12 +130,25 @@ func AskQuestion(model questionModel, questionInput *QuestionInput) error {
 	return err
 }
 
+func combineRows(rows []Row) [][]string {
+	stringRows := [][]string{}
+	for _, row := range rows {
+		stringRows = append(stringRows, row...)
+	}
+	return stringRows
+}
+
 /*
 createItems creates the items for a list in a question. The items are made from a question table along with
 the table's header, and a map to retrieve indexed answers.
 */
 func createItems(input *QuestionInput) (header string, itemList []list.Item, itemMap map[item]string) {
-	tableString := createQuestionTable(input.OptionData, input.HeaderStrings)
+	data := input.OptionData
+	if input.Rows != nil {
+		data = combineRows(input.Rows)
+	}
+	tableString := createQuestionTable(data, input.HeaderStrings)
+	fmt.Printf("tableString: \n%v\n", tableString)
 	optionStrings := strings.Split(strings.TrimSuffix(tableString, "\n"), "\n")
 
 	// Remove Empty Lines
@@ -153,13 +169,37 @@ func createItems(input *QuestionInput) (header string, itemList []list.Item, ite
 
 	// Creates list of items and item map
 	itemList = []list.Item{}
-	itemMap = make(map[item]string, len(input.OptionData))
-	for index, itemString := range optionStrings {
-		if len(input.IndexedOptions) == len(input.OptionData) && len(input.IndexedOptions) == len(optionStrings) {
-			itemMap[item(itemString)] = input.IndexedOptions[index]
+	itemMap = map[item]string{}
+	index := 0
+	b := strings.Builder{}
+	if input.Rows != nil {
+		for _, row := range input.Rows {
+			b.Reset()
+			for i := 0; i < len(row); i++ {
+				fmt.Printf("optionStrings[index]: %v\n", optionStrings[index])
+				b.WriteString(optionStrings[index])
+				if len(row)-i > 1 {
+					b.WriteRune('\n')
+				}
+				index++
+			}
+			itemString := b.String()
+			if index < len(input.IndexedOptions) {
+				itemMap[item(itemString)] = input.IndexedOptions[index]
+			}
+			if strings.TrimSpace(itemString) != "" {
+				itemList = append(itemList, item(itemString))
+			}
 		}
-		if strings.TrimSpace(itemString) != "" {
-			itemList = append(itemList, item(itemString))
+	}
+	if input.OptionData != nil {
+		for index, itemString := range optionStrings {
+			if len(input.IndexedOptions) == len(input.OptionData) && len(input.IndexedOptions) == len(optionStrings) {
+				itemMap[item(itemString)] = input.IndexedOptions[index]
+			}
+			if strings.TrimSpace(itemString) != "" {
+				itemList = append(itemList, item(itemString))
+			}
 		}
 	}
 

@@ -144,6 +144,25 @@ func GetQuestion(input *AskQuestionInput) {
 	}
 }
 
+func getNumLines(rowEntry []string) int {
+	maxNumLines := 0
+	for _, str := range rowEntry {
+		numLines := len(strings.Split(str, "\n"))
+		if numLines > maxNumLines {
+			maxNumLines = numLines
+		}
+	}
+	return maxNumLines
+}
+
+func createSingleLineRows(data [][]string) []questionModel.Row {
+	rows := []questionModel.Row{}
+	for _, str := range data {
+		rows = append(rows, [][]string{str})
+	}
+	return rows
+}
+
 // Ask for the region to use
 func AskRegion(h *ec2helper.EC2Helper, defaultRegion string) (*string, error) {
 	regionDescription := getRegionDescriptions()
@@ -181,7 +200,8 @@ func AskRegion(h *ec2helper.EC2Helper, defaultRegion string) (*string, error) {
 
 	model := &questionModel.SingleSelectList{}
 	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
-		OptionData:     data,
+		// OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		QuestionString: question,
 		DefaultOption:  *defaultOption,
 		IndexedOptions: indexedOptions,
@@ -1169,17 +1189,20 @@ func AskInstanceId(h *ec2helper.EC2Helper) (*string, error) {
 	data := [][]string{}
 	indexedOptions := []string{}
 
-	data, indexedOptions, _ = table.AppendInstances(data, indexedOptions, instances, nil)
+	data, indexedOptions, _, rows := table.AppendInstances(data, indexedOptions, instances, nil)
 
-	optionsText := table.BuildTable(data, []string{"Option", "Instance", "Tag-Key", "Tag-Value"})
+	headers := []string{"Option", "Instance", "Tag-Key", "Tag-Value"}
 	question := "Select the instance you want to connect to: "
 
-	answer := AskQuestion(&AskQuestionInput{
+	model := &questionModel.SingleSelectList{}
+	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+		Rows:           rows,
 		QuestionString: question,
-		OptionsString:  &optionsText,
+		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
 	})
 
+	answer := model.GetChoice()
 	return &answer, nil
 }
 
@@ -1201,8 +1224,9 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) (*string,
 	data := [][]string{}
 	indexedOptions := []string{}
 
-	data, indexedOptions, finalCounter := table.AppendInstances(data, indexedOptions, instances,
+	data, indexedOptions, finalCounter, rows := table.AppendInstances(data, indexedOptions, instances,
 		addedInstanceIds)
+	_ = rows
 
 	// There are no instances available for termination in selected region
 	if len(data) <= 0 && len(addedInstanceIds) == 0 {

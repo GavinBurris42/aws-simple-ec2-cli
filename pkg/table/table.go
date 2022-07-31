@@ -20,6 +20,7 @@ import (
 
 	"simple-ec2/pkg/cli"
 	"simple-ec2/pkg/ec2helper"
+	"simple-ec2/pkg/questionModel"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/olekukonko/tablewriter"
@@ -174,8 +175,9 @@ Append all instances. When a list of already added instance IDs is provided, the
 which instance IDs are already added to selection and exclude the added instance IDs from the table
 */
 func AppendInstances(data [][]string, indexedOptions []string, instances []*ec2.Instance,
-	addedInstanceIds []string) ([][]string, []string, int) {
+	addedInstanceIds []string) ([][]string, []string, int, []questionModel.Row) {
 	counter := 0
+	rows := []questionModel.Row{}
 	for _, instance := range instances {
 		if addedInstanceIds != nil {
 			// If this instance is already added, just don't display it here
@@ -221,7 +223,8 @@ func AppendInstances(data [][]string, indexedOptions []string, instances []*ec2.
 		for i := 1; i < len(displayTags); i++ {
 			data = append(data, []string{"", "", *displayTags[i].Key, *displayTags[i].Value})
 		}
+		rows = append(rows, data)
 	}
 
-	return data, indexedOptions, counter
+	return data, indexedOptions, counter, rows
 }
