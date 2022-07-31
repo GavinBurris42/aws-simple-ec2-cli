@@ -148,7 +148,6 @@ func createItems(input *QuestionInput) (header string, itemList []list.Item, ite
 		data = combineRows(input.Rows)
 	}
 	tableString := createQuestionTable(data, input.HeaderStrings)
-	fmt.Printf("tableString: \n%v\n", tableString)
 	optionStrings := strings.Split(strings.TrimSuffix(tableString, "\n"), "\n")
 
 	// Remove Empty Lines
@@ -173,10 +172,9 @@ func createItems(input *QuestionInput) (header string, itemList []list.Item, ite
 	index := 0
 	b := strings.Builder{}
 	if input.Rows != nil {
-		for _, row := range input.Rows {
+		for i, row := range input.Rows {
 			b.Reset()
 			for i := 0; i < len(row); i++ {
-				fmt.Printf("optionStrings[index]: %v\n", optionStrings[index])
 				b.WriteString(optionStrings[index])
 				if len(row)-i > 1 {
 					b.WriteRune('\n')
@@ -184,8 +182,8 @@ func createItems(input *QuestionInput) (header string, itemList []list.Item, ite
 				index++
 			}
 			itemString := b.String()
-			if index < len(input.IndexedOptions) {
-				itemMap[item(itemString)] = input.IndexedOptions[index]
+			if i < len(input.IndexedOptions) {
+				itemMap[item(itemString)] = input.IndexedOptions[i]
 			}
 			if strings.TrimSpace(itemString) != "" {
 				itemList = append(itemList, item(itemString))

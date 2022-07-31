@@ -42,7 +42,19 @@ func (s *SingleSelectList) InitializeModel(input *QuestionInput) {
 			return mediumLeftPadding.Render(s)
 		},
 		renderFocused: func(s string, index int) string {
-			return styleTableItem("> "+s, focused, smallLeftPadding.Copy().Inherit(focused))
+			b := strings.Builder{}
+			splitStrings := strings.Split(s, "\n")
+			for index, str := range splitStrings {
+				if index == 0 {
+					b.WriteString(styleTableItem("> "+str, focused, smallLeftPadding.Copy().Inherit(focused)))
+				} else {
+					b.WriteString(styleTableItem(str, focused, mediumLeftPadding.Copy().Inherit(focused)))
+				}
+				if index < len(splitStrings)-1 {
+					b.WriteRune('\n')
+				}
+			}
+			return b.String()
 		},
 	}
 

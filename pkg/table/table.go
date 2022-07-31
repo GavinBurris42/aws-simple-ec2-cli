@@ -217,7 +217,7 @@ func AppendInstances(data [][]string, indexedOptions []string, instances []*ec2.
 		}
 
 		// Append the main row
-		data = append(data, firstRow)
+		data = [][]string{firstRow}
 
 		// Append subrows, if applicable
 		for i := 1; i < len(displayTags); i++ {
