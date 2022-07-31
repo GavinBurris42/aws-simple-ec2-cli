@@ -14,11 +14,9 @@
 package question
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -67,94 +65,6 @@ type AskQuestionInput struct {
 	Fns               []CheckInput
 }
 
-// Ask a question on CLI, with a default input and a list of valid inputs.
-func AskQuestion(input *AskQuestionInput) string {
-	fmt.Println()
-	if input.OptionsString != nil {
-		fmt.Print(*input.OptionsString)
-	}
-
-	// Keep asking for user input until one valid input in entered
-	for {
-		// GetQuestion displays question with default values
-		GetQuestion(input)
-
-		// Read input from the user and convert CRLF to LF
-		reader := bufio.NewReader(os.Stdin)
-		answer, _ := reader.ReadString('\n')
-		answer = strings.Replace(answer, "\n", "", -1)
-
-		// If no input is entered, simply return the default value, if there is one
-		if answer == "" && input.DefaultOption != nil {
-			return *input.DefaultOption
-		}
-
-		// Check if the answer is a valid index in the indexed options. If so, return the option value
-		if input.IndexedOptions != nil {
-			index, err := strconv.Atoi(answer)
-			if err == nil && index >= 1 && index <= len(input.IndexedOptions) {
-				return input.IndexedOptions[index-1]
-			}
-		}
-
-		// Check if the input matches any string option. If so, return it immediately
-		if input.StringOptions != nil {
-			for _, input := range input.StringOptions {
-				if input == answer {
-					return answer
-				}
-			}
-		}
-
-		// Check if any CheckInput function validates the input. If so, return it immediately
-		if input.EC2Helper != nil && input.Fns != nil {
-			for _, fn := range input.Fns {
-				if fn(input.EC2Helper, answer) {
-					return answer
-				}
-			}
-		}
-
-		// If an arbitrary integer is allowed, try to parse the input as an integer
-		if input.AcceptAnyInteger {
-			_, err := strconv.Atoi(answer)
-			if err == nil {
-				return answer
-			}
-		}
-
-		// If an arbitrary string is allowed, return the answer anyway
-		if input.AcceptAnyString {
-			return answer
-		}
-
-		// No match at all
-		fmt.Println("Input invalid. Please try again.")
-	}
-}
-
-// GetQuestion displays question with default values
-func GetQuestion(input *AskQuestionInput) {
-	if input.DefaultOptionRepr != nil {
-		fmt.Printf("%s [%s]:  ", input.QuestionString, *input.DefaultOptionRepr)
-	} else if input.DefaultOption != nil {
-		fmt.Printf("%s [%s]:  ", input.QuestionString, *input.DefaultOption)
-	} else {
-		fmt.Printf(input.QuestionString + ": ")
-	}
-}
-
-func getNumLines(rowEntry []string) int {
-	maxNumLines := 0
-	for _, str := range rowEntry {
-		numLines := len(strings.Split(str, "\n"))
-		if numLines > maxNumLines {
-			maxNumLines = numLines
-		}
-	}
-	return maxNumLines
-}
-
 func createSingleLineRows(data [][]string) []questionModel.Row {
 	rows := []questionModel.Row{}
 	for _, str := range data {
@@ -200,7 +110,6 @@ func AskRegion(h *ec2helper.EC2Helper, defaultRegion string) (*string, error) {
 
 	model := &questionModel.SingleSelectList{}
 	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
-		// OptionData:     data,
 		Rows:           createSingleLineRows(data),
 		QuestionString: question,
 		DefaultOption:  *defaultOption,
@@ -272,7 +181,7 @@ func AskLaunchTemplate(h *ec2helper.EC2Helper, defaultLaunchTemplateId string) (
 		DefaultOption:  defaultOption,
 		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		QuestionString: question,
 	})
 
@@ -324,7 +233,7 @@ func AskLaunchTemplateVersion(h *ec2helper.EC2Helper, launchTemplateId string, d
 		DefaultOption:  defaultOption,
 		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		QuestionString: question,
 	})
 
@@ -374,7 +283,7 @@ func AskIfEnterInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) 
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
 		DefaultOption:  *defaultOption,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -523,7 +432,7 @@ func AskInstanceTypeInstanceSelector(h *ec2helper.EC2Helper, instanceSelector ec
 	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		HeaderStrings:  headers,
 	})
 
@@ -603,7 +512,7 @@ func AskImage(h *ec2helper.EC2Helper, instanceType string, defaultImageId string
 		HeaderStrings:  headers,
 		QuestionString: question,
 		DefaultOption:  defaultOption,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		IndexedOptions: indexedOptions,
 		EC2Helper:      h,
 		Fns:            []questionModel.CheckInput{ec2helper.ValidateImageId},
@@ -699,7 +608,7 @@ func AskIamProfile(i *iamhelper.IAMHelper, defaultIamProfile string) (string, er
 		DefaultOption:  defaultOptionValue,
 		IndexedOptions: indexedOptions,
 		HeaderStrings:  headers,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -773,7 +682,7 @@ func AskVpc(h *ec2helper.EC2Helper, defaultVpcId string) (*string, error) {
 		QuestionString: question,
 		DefaultOption:  defaultOptionValue,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		HeaderStrings:  headers,
 	})
 
@@ -824,7 +733,7 @@ func AskSubnet(h *ec2helper.EC2Helper, vpcId string, defaultSubnetId string) (*s
 		QuestionString: question,
 		DefaultOption:  *defaultOptionValue,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		HeaderStrings:  headers,
 	})
 
@@ -870,7 +779,7 @@ func AskSubnetPlaceholder(h *ec2helper.EC2Helper, defaultAzId string) (*string, 
 		DefaultOption:  *defaultOptionValue,
 		IndexedOptions: indexedOptions,
 		HeaderStrings:  headers,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -919,7 +828,7 @@ func AskSecurityGroups(groups []*ec2.SecurityGroup, defaultSecurityGroups []*ec2
 		DefaultOptionList: defaultOptionList,
 		IndexedOptions:    indexedOptions,
 		HeaderStrings:     headers,
-		OptionData:        data,
+		Rows:              createSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -946,7 +855,7 @@ func AskSecurityGroupPlaceholder() (string, error) {
 	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -1245,18 +1154,21 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) (*string,
 			"Don't add any more instance id"})
 	}
 
-	optionsText := table.BuildTable(data, []string{"Option", "Instance", "Tag-Key", "Tag-Value"})
+	headers := []string{"Option", "Instance", "Tag-Key", "Tag-Value"}
 	question := "Select the instance you want to terminate: "
 	if len(addedInstanceIds) > 0 {
 		question = "If you wish to terminate multiple instance(s), add from the following: "
 	}
 
-	answer := AskQuestion(&AskQuestionInput{
+	model := &questionModel.SingleSelectList{}
+	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
-		OptionsString:  &optionsText,
+		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
+		Rows:           rows,
 	})
 
+	answer := model.GetChoice()
 	return &answer, err
 }
 
@@ -1379,7 +1291,7 @@ func AskCapacityType(instanceType string, region string, defaultCapacityType str
 		QuestionString: question,
 		DefaultOption:  defaultOption,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           createSingleLineRows(data),
 		HeaderStrings:  headers,
 	})
 
@@ -1402,7 +1314,7 @@ func askYesNoQuestion(question string, defaultToYes bool) (string, error) {
 		QuestionString: question,
 		IndexedOptions: yesNoOptions,
 		DefaultOption:  defaultOption,
-		OptionData:     yesNoData,
+		Rows:           createSingleLineRows(yesNoData),
 	})
 
 	if err != nil {
@@ -1421,7 +1333,7 @@ func askConfigTableQuestion(tableData [][]string) (string, error) {
 	configList.InitializeModel(&questionModel.QuestionInput{
 		QuestionString: question,
 		HeaderStrings:  headers,
-		OptionData:     tableData,
+		Rows:           createSingleLineRows(tableData),
 	})
 
 	answer, err := askYesNoQuestion(configList.PrintTable(), false)
