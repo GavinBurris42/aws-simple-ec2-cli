@@ -903,6 +903,10 @@ func AskConfirmationWithTemplate(h *ec2helper.EC2Helper,
 	data = table.AppendTemplateEbs(data, templateData.BlockDeviceMappings)
 
 	answer, err := askConfigTableQuestion(data)
+	// model := &questionModel.Confirmation{}
+	// err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+
+	// })
 
 	if err != nil {
 		return nil, err
@@ -1079,7 +1083,7 @@ func AskInstanceId(h *ec2helper.EC2Helper) (*string, error) {
 
 	data, indexedOptions, _, rows := table.AppendInstances(data, indexedOptions, instances, nil)
 
-	headers := []string{"Option", "Instance", "Tag-Key", "Tag-Value"}
+	headers := []string{"Instance", "Tag-Key", "Tag-Value"}
 	question := "Select the instance you want to connect to: "
 
 	model := &questionModel.SingleSelectList{}
@@ -1112,7 +1116,7 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) ([]string
 	data := [][]string{}
 	indexedOptions := []string{}
 
-	data, indexedOptions, finalCounter, rows := table.AppendInstances(data, indexedOptions, instances,
+	data, indexedOptions, _, rows := table.AppendInstances(data, indexedOptions, instances,
 		addedInstanceIds)
 	_ = rows
 
@@ -1126,18 +1130,8 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) ([]string
 		return nil, nil
 	}
 
-	// Add "done" option, if instance(s) are already selected
-	if len(addedInstanceIds) > 0 {
-		indexedOptions = append(indexedOptions, cli.ResponseNo)
-		data = append(data, []string{fmt.Sprintf("%d.", finalCounter+1),
-			"Don't add any more instance id"})
-	}
-
-	headers := []string{"Option", "Instance", "Tag-Key", "Tag-Value"}
-	question := "Select the instance you want to terminate: "
-	if len(addedInstanceIds) > 0 {
-		question = "If you wish to terminate multiple instance(s), add from the following: "
-	}
+	headers := []string{"Instance", "Tag-Key", "Tag-Value"}
+	question := "Select the instances you want to terminate: "
 
 	model := &questionModel.MultiSelectList{}
 	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{

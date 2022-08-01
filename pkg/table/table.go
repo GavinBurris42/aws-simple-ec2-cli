@@ -198,7 +198,7 @@ func AppendInstances(data [][]string, indexedOptions []string, instances []*ec2.
 		if instanceTagName != nil {
 			instanceName = fmt.Sprintf("%s(%s)", *instanceTagName, *instance.InstanceId)
 		}
-		firstRow := []string{fmt.Sprintf("%d.", counter+1), instanceName, "", ""}
+		firstRow := []string{instanceName, "", ""}
 		indexedOptions = append(indexedOptions, *instance.InstanceId)
 		counter++
 
@@ -212,8 +212,8 @@ func AppendInstances(data [][]string, indexedOptions []string, instances []*ec2.
 
 		// Append the first tag, if applicable
 		if len(displayTags) > 0 {
-			firstRow[2] = *displayTags[0].Key
-			firstRow[3] = *displayTags[0].Value
+			firstRow[1] = *displayTags[0].Key
+			firstRow[2] = *displayTags[0].Value
 		}
 
 		// Append the main row
@@ -221,7 +221,7 @@ func AppendInstances(data [][]string, indexedOptions []string, instances []*ec2.
 
 		// Append subrows, if applicable
 		for i := 1; i < len(displayTags); i++ {
-			data = append(data, []string{"", "", *displayTags[i].Key, *displayTags[i].Value})
+			data = append(data, []string{"", *displayTags[i].Key, *displayTags[i].Value})
 		}
 		rows = append(rows, data)
 	}

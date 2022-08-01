@@ -230,6 +230,15 @@ func launchInteractive(h *ec2helper.EC2Helper) {
 			if !ReadAutoTerminationTimer(h, simpleConfig, simpleDefaultsConfig.AutoTerminationTimerMinutes) {
 				return
 			}
+		case cli.ResourceIamInstanceProfile:
+			if !ReadIamProfile(h, simpleConfig, simpleDefaultsConfig.IamInstanceProfile) {
+				return
+			}
+		case cli.ResourceCapacityType:
+			simpleConfig.CapacityType, err = question.AskCapacityType(simpleConfig.InstanceType, simpleConfig.Region, simpleDefaultsConfig.CapacityType)
+			if cli.ShowError(err, "Asking capacity type failed") {
+				return
+			}
 		}
 	}
 
