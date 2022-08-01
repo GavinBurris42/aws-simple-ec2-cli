@@ -142,9 +142,9 @@ func (kv *KeyValue) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyBackspace:
-			kv.deleteTag()
+			isDeleted := kv.deleteTag()
 			// If there are no more tags then set the focus back to the first text input
-			if len(kv.tagList.list.Items()) == 0 {
+			if isDeleted && len(kv.tagList.list.Items()) == 0 {
 				kv.focusIndex = 0
 				return kv, kv.focusInput(kv.focusIndex)
 			}
@@ -247,14 +247,16 @@ func (kv *KeyValue) cycleFocusIndex(msgType tea.KeyType) {
 }
 
 // deleteTag deletes a tag if cursor is focused on a tag in the tag list
-func (kv *KeyValue) deleteTag() {
+func (kv *KeyValue) deleteTag() bool {
 	cursor := kv.tagList.list.Cursor()
 	if cursor >= 0 && len(kv.tagList.list.Items()) > 0 {
 		kv.tags = append(kv.tags[:cursor], kv.tags[cursor+1:]...)
 		kv.tagList.list.RemoveItem(cursor)
 		kv.tagList.list.CursorUp()
 		kv.tagList.list.SetHeight(kv.tagList.list.Height() - 1)
+		return true
 	}
+	return false
 }
 
 // focusInput focuses one of the text inputs based on the given index
