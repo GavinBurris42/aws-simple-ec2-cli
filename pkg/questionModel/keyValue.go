@@ -246,7 +246,10 @@ func (kv *KeyValue) cycleFocusIndex(msgType tea.KeyType) {
 	}
 }
 
-// deleteTag deletes a tag if cursor is focused on a tag in the tag list
+/*
+deleteTag deletes a tag if cursor is focused on a tag in the tag list. Returns whether
+a tag was deleted or not
+*/
 func (kv *KeyValue) deleteTag() bool {
 	cursor := kv.tagList.list.Cursor()
 	if cursor >= 0 && len(kv.tagList.list.Items()) > 0 {
