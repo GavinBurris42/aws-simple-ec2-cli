@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"simple-ec2/pkg/cli"
 	"simple-ec2/pkg/ec2helper"
 	"strings"
 
@@ -51,6 +52,9 @@ var (
 	exitError = errors.New("Exiting the questionnaire")
 )
 
+var yesNoData = [][]string{{cli.ResponseYes}, {cli.ResponseNo}}
+var yesNoOptions = []string{cli.ResponseYes, cli.ResponseNo}
+
 // CheckInput is used to validate a given string using validation methods from ec2helper
 type CheckInput func(*ec2helper.EC2Helper, string) bool
 
@@ -58,10 +62,9 @@ type Row [][]string
 
 // QuestionInput represents input that can be used to initialize each question
 type QuestionInput struct {
-	DefaultOption     string     // Defaulted set/selected answer
-	DefaultOptionList []string   // List of default selected answers
-	OptionData        [][]string // Data used to fill in question tables
-	Rows              []Row
+	DefaultOption     string               // Defaulted set/selected answer
+	DefaultOptionList []string             // List of default selected answers
+	Rows              []Row                // Row data used to fill in question tables
 	HeaderStrings     []string             // List of headers for question tables
 	IndexedOptions    []string             // List of values to be returned when selected index in a list is chosen
 	QuestionString    string               // The Question being asked
@@ -143,11 +146,7 @@ createItems creates the items for a list in a question. The items are made from 
 the table's header, and a map to retrieve indexed answers.
 */
 func createItems(input *QuestionInput) (header string, itemList []list.Item, itemMap map[item]string) {
-	data := input.OptionData
-	if input.Rows != nil {
-		data = combineRows(input.Rows)
-	}
-	tableString := createQuestionTable(data, input.HeaderStrings)
+	tableString := createQuestionTable(combineRows(input.Rows), input.HeaderStrings)
 	optionStrings := strings.Split(strings.TrimSuffix(tableString, "\n"), "\n")
 
 	// Remove Empty Lines
@@ -172,8 +171,10 @@ func createItems(input *QuestionInput) (header string, itemList []list.Item, ite
 	index := 0
 	b := strings.Builder{}
 	if input.Rows != nil {
+		// Create an item for each Row
 		for i, row := range input.Rows {
 			b.Reset()
+			// Combine lines to form the Row
 			for i := 0; i < len(row); i++ {
 				b.WriteString(optionStrings[index])
 				if len(row)-i > 1 {
@@ -184,16 +185,6 @@ func createItems(input *QuestionInput) (header string, itemList []list.Item, ite
 			itemString := b.String()
 			if i < len(input.IndexedOptions) {
 				itemMap[item(itemString)] = input.IndexedOptions[i]
-			}
-			if strings.TrimSpace(itemString) != "" {
-				itemList = append(itemList, item(itemString))
-			}
-		}
-	}
-	if input.OptionData != nil {
-		for index, itemString := range optionStrings {
-			if len(input.IndexedOptions) == len(input.OptionData) && len(input.IndexedOptions) == len(optionStrings) {
-				itemMap[item(itemString)] = input.IndexedOptions[index]
 			}
 			if strings.TrimSpace(itemString) != "" {
 				itemList = append(itemList, item(itemString))
@@ -285,6 +276,23 @@ func createQuestionTable(tableData [][]string, headers []string) string {
 	return tableString
 }
 
+func focusTableItemRows(tableItemRow string, multiRowStyle lipgloss.Style, defaultStyle lipgloss.Style,
+	firstRowStyle lipgloss.Style) string {
+	b := strings.Builder{}
+	splitStrings := strings.Split(tableItemRow, "\n")
+	for index, str := range splitStrings {
+		if index == 0 {
+			b.WriteString(styleTableItem(str, defaultStyle, firstRowStyle))
+		} else {
+			b.WriteString(styleTableItem(str, defaultStyle, multiRowStyle.Copy().Inherit(defaultStyle)))
+		}
+		if index < len(splitStrings)-1 {
+			b.WriteRune('\n')
+		}
+	}
+	return b.String()
+}
+
 /*
 styleTableItem applies a lipgloss style to each string in a table item, negelecting the column seperator.
 The style for the first column in the table is specified seperately. If the first column is to be the same as
@@ -324,4 +332,34 @@ func getDefaultOptionIndexes(input *QuestionInput) []int {
 		}
 	}
 	return defaultOptionIndexes
+}
+
+func CreateSingleLineRows(data [][]string) []Row {
+	rows := []Row{}
+	for _, str := range data {
+		rows = append(rows, [][]string{str})
+	}
+	return rows
+}
+
+// askYesNoQuestion asks a yes or no question
+func AskYesNoQuestion(question string, defaultToYes bool) (string, error) {
+	defaultOption := cli.ResponseNo
+	if defaultToYes {
+		defaultOption = cli.ResponseYes
+	}
+
+	model := &SingleSelectList{}
+	err := AskQuestion(model, &QuestionInput{
+		QuestionString: question,
+		IndexedOptions: yesNoOptions,
+		DefaultOption:  defaultOption,
+		Rows:           CreateSingleLineRows(yesNoData),
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return model.GetChoice(), nil
 }

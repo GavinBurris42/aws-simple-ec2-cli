@@ -99,9 +99,9 @@ func AppendEbs(data [][]string, mappings []*ec2.BlockDeviceMapping) [][]string {
 }
 
 // Append all security groups
-func AppendSecurityGroups(data [][]string, securityGroups []*ec2.SecurityGroup) [][]string {
+func AppendSecurityGroups(data [][]string, securityGroups []*ec2.SecurityGroup) ([][]string, questionModel.Row) {
+	securityGroupData := [][]string{}
 	if securityGroups != nil && len(securityGroups) > 0 {
-		securityGroupData := [][]string{}
 		for _, group := range securityGroups {
 			groupName := *group.GroupId
 			groupTagName := ec2helper.GetTagName(group.Tags)
@@ -114,7 +114,7 @@ func AppendSecurityGroups(data [][]string, securityGroups []*ec2.SecurityGroup) 
 		data = append(data, securityGroupData...)
 	}
 
-	return data
+	return data, securityGroupData
 }
 
 // Append all launch template network interfaces, if applicable

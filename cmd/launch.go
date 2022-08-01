@@ -169,6 +169,12 @@ func launchInteractive(h *ec2helper.EC2Helper) {
 		}
 	}
 
+	// Ask for and set the capacity type
+	simpleConfig.CapacityType, err = question.AskCapacityType(simpleConfig.InstanceType, simpleConfig.Region, simpleDefaultsConfig.CapacityType)
+	if cli.ShowError(err, "Asking capacity type failed") {
+		return
+	}
+
 	// Ask for confirmation or modification. Keep asking until the config is confirmed or denied
 	var detailedConfig *config.DetailedInfo
 	var confirmation string
@@ -176,12 +182,6 @@ func launchInteractive(h *ec2helper.EC2Helper) {
 		// Parse config first
 		detailedConfig, err = h.ParseConfig(simpleConfig)
 		if cli.ShowError(err, "Parsing config failed") {
-			return
-		}
-
-		// Ask for and set the capacity type
-		simpleConfig.CapacityType, err = question.AskCapacityType(simpleConfig.InstanceType, simpleConfig.Region, simpleDefaultsConfig.CapacityType)
-		if cli.ShowError(err, "Asking capacity type failed") {
 			return
 		}
 
@@ -194,6 +194,42 @@ func launchInteractive(h *ec2helper.EC2Helper) {
 		// The users have confirmed or denied the config
 		if confirmation == cli.ResponseYes || confirmation == cli.ResponseNo {
 			break
+		}
+
+		simpleDefaultsConfig = simpleConfig
+		detailedDefaultsConfig, err = h.ParseConfig(simpleDefaultsConfig)
+
+		switch confirmation {
+		// Ask questions to modify the config
+		case cli.ResourceVpc:
+			if !ReadNetworkConfiguration(h, simpleConfig, detailedDefaultsConfig) {
+				return
+			}
+		case cli.ResourceSubnet:
+			if !ReadSubnet(h, simpleConfig, *detailedConfig.Subnet.VpcId, simpleDefaultsConfig.SubnetId) {
+				return
+			}
+		case cli.ResourceSecurityGroup:
+			if !ReadSecurityGroups(h, simpleConfig, *detailedConfig.Subnet.VpcId, detailedDefaultsConfig.SecurityGroups) {
+				return
+			}
+		case cli.ResourceInstanceType:
+			if !ReadInstanceType(h, simpleConfig, simpleDefaultsConfig.InstanceType) {
+				return
+			}
+			if !ReadImageId(h, simpleConfig, simpleDefaultsConfig) {
+				return
+			}
+		case cli.ResourceImage:
+			if !ReadImageId(h, simpleConfig, simpleDefaultsConfig) {
+				return
+			}
+		case cli.ResourceKeepEbsVolume:
+			ReadKeepEbsVolume(simpleConfig, simpleDefaultsConfig.KeepEbsVolumeAfterTermination)
+		case cli.ResourceAutoTerminationTimer:
+			if !ReadAutoTerminationTimer(h, simpleConfig, simpleDefaultsConfig.AutoTerminationTimerMinutes) {
+				return
+			}
 		}
 	}
 
@@ -414,7 +450,7 @@ func ReadImageId(h *ec2helper.EC2Helper, simpleConfig *config.SimpleInfo, defaul
 		if cli.ShowError(err, "Asking EBS volume persistence failed") {
 			return false
 		}
-		ReadKeepEbsVolume(simpleConfig, ebsVolumeAnswer)
+		ReadKeepEbsVolume(simpleConfig, ebsVolumeAnswer == cli.ResponseYes)
 	}
 
 	// Auto-termination only supports Linux for now
@@ -448,8 +484,8 @@ func ReadAutoTerminationTimer(h *ec2helper.EC2Helper, simpleConfig *config.Simpl
 Ask user input for keeping EBS volumes after instance termination.
 Return true if the function is executed successfully, false otherwise
 */
-func ReadKeepEbsVolume(simpleConfig *config.SimpleInfo, isKeepVolume string) {
-	simpleConfig.KeepEbsVolumeAfterTermination = isKeepVolume == cli.ResponseYes
+func ReadKeepEbsVolume(simpleConfig *config.SimpleInfo, isKeepVolume bool) {
+	simpleConfig.KeepEbsVolumeAfterTermination = isKeepVolume
 }
 
 /*

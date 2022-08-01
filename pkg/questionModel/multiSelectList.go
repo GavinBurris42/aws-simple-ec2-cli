@@ -46,13 +46,14 @@ func (m *MultiSelectList) InitializeModel(input *QuestionInput) {
 			if index == len(items)-1 {
 				return fmt.Sprintf(xLargeLeftPadding.Render("\n[ %s ]"), blurred.Render(s))
 			}
-			return mediumLeftPadding.Render(fmt.Sprintf("%s %s", m.getCheckBox(index), s))
+			return focusTableItemRows(fmt.Sprintf("%s %s", m.getCheckBox(index), s), xLargeLeftPadding, noStyle, mediumLeftPadding)
 		},
 		renderFocused: func(s string, index int) string {
 			if index == len(items)-1 {
 				return fmt.Sprintf(xLargeLeftPadding.Render("\n[ %s ]"), focused.Render(s))
 			}
-			return styleTableItem(fmt.Sprintf("> %s %s", m.getCheckBox(index), s), focused, smallLeftPadding.Copy().Inherit(focused))
+			return focusTableItemRows(fmt.Sprintf("> %s %s", m.getCheckBox(index), s), xLargeLeftPadding, focused,
+				smallLeftPadding.Copy().Inherit(focused))
 		},
 	}
 
