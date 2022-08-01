@@ -270,6 +270,8 @@ func launchNonInteractive(h *ec2helper.EC2Helper) {
 		}
 	}
 
+	h.ChangeRegion(simpleConfig.Region)
+
 	// Override config with flags if applicable
 	config.OverrideConfigWithFlags(simpleConfig, flagConfig)
 
