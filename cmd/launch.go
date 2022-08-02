@@ -225,7 +225,11 @@ func launchInteractive(h *ec2helper.EC2Helper) {
 				return
 			}
 		case cli.ResourceKeepEbsVolume:
-			ReadKeepEbsVolume(simpleConfig, simpleDefaultsConfig.KeepEbsVolumeAfterTermination)
+			ebsVolumeAnswer, err := question.AskKeepEbsVolume(simpleDefaultsConfig.KeepEbsVolumeAfterTermination)
+			if cli.ShowError(err, "Asking EBS volume persistence failed") {
+				return
+			}
+			ReadKeepEbsVolume(simpleConfig, ebsVolumeAnswer == cli.ResponseYes)
 		case cli.ResourceAutoTerminationTimer:
 			if !ReadAutoTerminationTimer(h, simpleConfig, simpleDefaultsConfig.AutoTerminationTimerMinutes) {
 				return
@@ -237,6 +241,16 @@ func launchInteractive(h *ec2helper.EC2Helper) {
 		case cli.ResourceCapacityType:
 			simpleConfig.CapacityType, err = question.AskCapacityType(simpleConfig.InstanceType, simpleConfig.Region, simpleDefaultsConfig.CapacityType)
 			if cli.ShowError(err, "Asking capacity type failed") {
+				return
+			}
+		case cli.ResourceUserTags:
+			err := ReadUserTags(h, simpleConfig, simpleDefaultsConfig.UserTags)
+			if err != nil {
+				return
+			}
+		case cli.ResourceBootScriptFilePath:
+			err := ReadBootScript(h, simpleConfig, simpleDefaultsConfig.BootScriptFilePath)
+			if err != nil {
 				return
 			}
 		}
@@ -640,6 +654,8 @@ func ReadIamProfile(h *ec2helper.EC2Helper, simpleConfig *config.SimpleInfo, def
 	}
 	if iamAnswer != cli.ResponseNo {
 		simpleConfig.IamInstanceProfile = iamAnswer
+	} else {
+		simpleConfig.IamInstanceProfile = ""
 	}
 	return true
 }
@@ -676,6 +692,7 @@ Ask user input for tags applied to launched instances and volumes.
 Return true if the function is executed successfully, false otherwise
 */
 func ReadUserTags(h *ec2helper.EC2Helper, simpleConfig *config.SimpleInfo, defaultTags map[string]string) error {
+	simpleConfig.UserTags = make(map[string]string)
 	confirmationAnswer, err := question.AskUserTagsConfirmation(h, defaultTags)
 	if cli.ShowError(err, "Asking user tags confirmation failed") {
 		return err

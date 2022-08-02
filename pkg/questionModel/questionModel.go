@@ -276,7 +276,8 @@ func createQuestionTable(tableData [][]string, headers []string) string {
 	return tableString
 }
 
-func focusTableItemRows(tableItemRow string, multiRowStyle lipgloss.Style, defaultStyle lipgloss.Style,
+// styleTableItemRows styles multiple items in a single row
+func styleTableItemRows(tableItemRow string, multiRowStyle lipgloss.Style, defaultStyle lipgloss.Style,
 	firstRowStyle lipgloss.Style) string {
 	b := strings.Builder{}
 	splitStrings := strings.Split(tableItemRow, "\n")
@@ -334,6 +335,7 @@ func getDefaultOptionIndexes(input *QuestionInput) []int {
 	return defaultOptionIndexes
 }
 
+// CreateSingleLineRows converts a 2d-array into a list of rows
 func CreateSingleLineRows(data [][]string) []Row {
 	rows := []Row{}
 	for _, str := range data {

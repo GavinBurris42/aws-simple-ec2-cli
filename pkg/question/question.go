@@ -903,10 +903,6 @@ func AskConfirmationWithTemplate(h *ec2helper.EC2Helper,
 	data = table.AppendTemplateEbs(data, templateData.BlockDeviceMappings)
 
 	answer, err := askConfigTableQuestion(data)
-	// model := &questionModel.Confirmation{}
-	// err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
-
-	// })
 
 	if err != nil {
 		return nil, err
@@ -960,7 +956,7 @@ func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *c
 
 	rows := questionModel.CreateSingleLineRows(data)
 	indexedOptions := []string{
-		cli.ResourceRegion,
+		"",
 		cli.ResourceVpc,
 		cli.ResourceSubnet,
 		cli.ResourceInstanceType,
@@ -1007,7 +1003,11 @@ func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *c
 
 	// Append all EBS blocks, if applicable
 	blockDeviceMappings := detailedConfig.Image.BlockDeviceMappings
-	data = table.AppendEbs(data, blockDeviceMappings)
+	if len(blockDeviceMappings) != 0 {
+		_, row := table.AppendEbs(data, blockDeviceMappings)
+		rows = append(rows, row)
+		indexedOptions = append(indexedOptions, "")
+	}
 
 	// Append instance store, if applicable
 	if detailedConfig.InstanceTypeInfo.InstanceStorageInfo != nil {
@@ -1027,11 +1027,18 @@ func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *c
 		indexedOptions = append(indexedOptions, cli.ResourceBootScriptFilePath)
 	}
 	if len(simpleConfig.UserTags) != 0 {
-		var tags []string
+		var tags [][]string
+		index := 0
 		for k, v := range simpleConfig.UserTags {
-			tags = append(tags, fmt.Sprintf("%s|%s", k, v))
+			tag := fmt.Sprintf("%s|%s", k, v)
+			if index == 0 {
+				tags = append(tags, []string{cli.ResourceUserTags, tag})
+			} else {
+				tags = append(tags, []string{"", tag})
+			}
+			index++
 		}
-		rows = append(rows, [][]string{{cli.ResourceUserTags, strings.Join(tags, "\n")}})
+		rows = append(rows, tags)
 		indexedOptions = append(indexedOptions, cli.ResourceUserTags)
 	}
 

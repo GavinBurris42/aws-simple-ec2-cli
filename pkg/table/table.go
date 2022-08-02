@@ -75,10 +75,9 @@ func AppendTemplateEbs(data [][]string, mappings []*ec2.LaunchTemplateBlockDevic
 }
 
 // Append all  EBS blocks, if applicable
-func AppendEbs(data [][]string, mappings []*ec2.BlockDeviceMapping) [][]string {
+func AppendEbs(data [][]string, mappings []*ec2.BlockDeviceMapping) ([][]string, questionModel.Row) {
+	ebsData := [][]string{}
 	if mappings != nil && len(mappings) > 0 {
-
-		ebsData := [][]string{}
 		for _, block := range mappings {
 			ebsName := fmt.Sprintf("%s", *block.DeviceName)
 			if block.Ebs != nil {
@@ -95,7 +94,7 @@ func AppendEbs(data [][]string, mappings []*ec2.BlockDeviceMapping) [][]string {
 		data = append(data, ebsData...)
 	}
 
-	return data
+	return data, ebsData
 }
 
 // Append all security groups

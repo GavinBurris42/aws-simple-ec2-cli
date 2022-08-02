@@ -123,7 +123,7 @@ func TestAppendEbs(t *testing.T) {
 		},
 	}
 
-	data = table.AppendEbs(data, mappings)
+	data, _ = table.AppendEbs(data, mappings)
 	th.Equals(t, expectedData, data)
 }
 
@@ -150,7 +150,7 @@ func TestAppendSecurityGroups(t *testing.T) {
 		},
 	}
 
-	data = table.AppendSecurityGroups(data, securityGroups)
+	data, _ = table.AppendSecurityGroups(data, securityGroups)
 	th.Equals(t, expectedData, data)
 }
 
@@ -271,7 +271,7 @@ func TestAppendInstances(t *testing.T) {
 	}
 
 	addedInstanceIds = append(addedInstanceIds, *instances[0].InstanceId)
-	data, indexedOptions, _ = table.AppendInstances(data, indexedOptions, instances, addedInstanceIds)
+	data, indexedOptions, _, _ = table.AppendInstances(data, indexedOptions, instances, addedInstanceIds)
 	th.Equals(t, expectedData, data)
 	th.Equals(t, expectedOptions, indexedOptions)
 }
