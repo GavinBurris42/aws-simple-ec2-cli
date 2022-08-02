@@ -104,7 +104,7 @@ func (c *Confirmation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				c.choice = c.lists[0].GetChoice()
 				// Set an error message if there is no choice associated with the option
 				if c.choice == "" {
-					c.errorMsg = "This configuration is a question that can be repeated!"
+					c.errorMsg = "This configuration is a question that can't be repeated!"
 					return c, nil
 				}
 				return c, tea.Quit
