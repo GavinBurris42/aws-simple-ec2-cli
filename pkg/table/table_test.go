@@ -214,10 +214,10 @@ func TestAppendTemplateNetworkInterfaces_ApiError(t *testing.T) {
 
 func TestAppendInstances(t *testing.T) {
 	expectedData := [][]string{
-		{"1.", "Instance 2(i-67890)", "", ""},
-		{"2.", "Instance 3(i-54321)", "CreatedBy", "simple-ec2"},
-		{"", "", "CreatedTime", "just now"},
-		{"3.", "i-09876", "", ""},
+		{"Instance 2(i-67890)", "", ""},
+		{"Instance 3(i-54321)", "CreatedBy", "simple-ec2"},
+		{"", "CreatedTime", "just now"},
+		{"i-09876", "", ""},
 	}
 	expectedOptions := []string{
 		"i-67890",

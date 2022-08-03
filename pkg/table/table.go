@@ -216,13 +216,14 @@ func AppendInstances(data [][]string, indexedOptions []string, instances []*ec2.
 		}
 
 		// Append the main row
-		data = [][]string{firstRow}
+		rowData := [][]string{firstRow}
 
 		// Append subrows, if applicable
 		for i := 1; i < len(displayTags); i++ {
-			data = append(data, []string{"", *displayTags[i].Key, *displayTags[i].Value})
+			rowData = append(rowData, []string{"", *displayTags[i].Key, *displayTags[i].Value})
 		}
-		rows = append(rows, data)
+		data = append(data, rowData...)
+		rows = append(rows, rowData)
 	}
 
 	return data, indexedOptions, counter, rows

@@ -37,8 +37,9 @@ type Confirmation struct {
 func (c *Confirmation) InitializeModel(input *QuestionInput) {
 	configList := SingleSelectList{}
 	configList.InitializeModel(&QuestionInput{
-		HeaderStrings:  []string{"Configurations", "Values"},
-		QuestionString: "Please confirm if you would like to launch instance with following options:",
+		HeaderStrings: []string{"Configuration", "Value"},
+		QuestionString: "Please confirm if you would like to launch instance with following options" +
+			"(Or select a configuration to repeat a question):",
 		Rows:           input.Rows,
 		IndexedOptions: input.IndexedOptions,
 	})
@@ -104,7 +105,7 @@ func (c *Confirmation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				c.choice = c.lists[0].GetChoice()
 				// Set an error message if there is no choice associated with the option
 				if c.choice == "" {
-					c.errorMsg = "This configuration is a question that can't be repeated!"
+					c.errorMsg = "This configuration can't be modified!"
 					return c, nil
 				}
 				return c, tea.Quit

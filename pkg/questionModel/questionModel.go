@@ -133,6 +133,7 @@ func AskQuestion(model questionModel, questionInput *QuestionInput) error {
 	return err
 }
 
+// combineRows combines all of the rows into a 2d-array
 func combineRows(rows []Row) [][]string {
 	stringRows := [][]string{}
 	for _, row := range rows {
