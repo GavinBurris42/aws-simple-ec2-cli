@@ -47,118 +47,6 @@ var testEC2 = &ec2helper.EC2Helper{
 var defaultArchitecture = aws.StringSlice([]string{"x86_64"})
 
 /*
-AskQuestion Tests
-*/
-
-const expectedOutput = `
-These are the optionsThis is a question [default option]:  `
-const invalidInputQuestionPrompt = `
-These are the optionsThis is a question [default option]:  Input invalid. Please try again.
-This is a question [default option]:  `
-
-var input = &question.AskQuestionInput{
-	QuestionString:    "This is a question",
-	OptionsString:     aws.String("These are the options"),
-	DefaultOptionRepr: aws.String("default option"),
-	DefaultOption:     aws.String(cli.ResponseYes),
-	IndexedOptions:    []string{"Option 1", "Option 2"},
-	StringOptions:     []string{cli.ResponseYes, cli.ResponseNo},
-	AcceptAnyInteger:  true,
-	AcceptAnyString:   true,
-}
-
-func TestAskQuestion_StringOptionAnswer(t *testing.T) {
-	const testResponse = cli.ResponseNo
-	initQuestionTest(t, testResponse+"\n")
-
-	answer := question.AskQuestion(input)
-	output := cleanupQuestionTest()
-	th.Equals(t, expectedOutput, output)
-	th.Equals(t, testResponse, answer)
-}
-
-func TestAskQuestion_InvalidInput(t *testing.T) {
-	const expectedInvalidInput = "heap"
-	initQuestionTest(t, expectedInvalidInput+"\n")
-	input.AcceptAnyString = false
-
-	question.AskQuestion(input)
-
-	output := cleanupQuestionTest()
-	th.Equals(t, invalidInputQuestionPrompt, output)
-}
-
-func TestAskQuestion_IndexedOptionAnswer(t *testing.T) {
-	input.DefaultOptionRepr = nil
-	const index = "1"
-	initQuestionTest(t, index+"\n")
-
-	answer := question.AskQuestion(input)
-	th.Equals(t, input.IndexedOptions[0], answer)
-
-	cleanupQuestionTest()
-}
-
-func TestAskQuestion_DefaultAnswer(t *testing.T) {
-	initQuestionTest(t, "\n")
-
-	answer := question.AskQuestion(input)
-	th.Equals(t, *input.DefaultOption, answer)
-
-	cleanupQuestionTest()
-}
-
-func TestAskQuestion_IntegerAnswer(t *testing.T) {
-	const expectedInteger = "5"
-	initQuestionTest(t, expectedInteger+"\n")
-
-	answer := question.AskQuestion(input)
-	th.Equals(t, expectedInteger, answer)
-
-	cleanupQuestionTest()
-}
-
-func TestAskQuestion_AnyStringAnswer(t *testing.T) {
-	// This test needs its own copy of the AskQuestionInput object to prevent some kind of race condition with the other
-	// tests when running the whole test suite. We don't exactly know why, but it works.
-	var anyStringQuestion = &question.AskQuestionInput{
-		QuestionString:  "This is a question?",
-		AcceptAnyString: true,
-	}
-	const expectedString = "any string"
-	initQuestionTest(t, expectedString+"\n")
-
-	answer := question.AskQuestion(anyStringQuestion)
-	th.Equals(t, expectedString, answer)
-
-	cleanupQuestionTest()
-}
-
-func TestAskQuestion_FunctionCheckedInput(t *testing.T) {
-	const expectedImageId = "ami-12345"
-	testEC2 := &ec2helper.EC2Helper{
-		Svc: &th.MockedEC2Svc{
-			Images: []*ec2.Image{
-				{
-					ImageId: aws.String(expectedImageId),
-				},
-			},
-		},
-	}
-	input.EC2Helper = testEC2
-	input.Fns = []question.CheckInput{
-		ec2helper.ValidateImageId,
-	}
-
-	initQuestionTest(t, expectedImageId+"\n")
-
-	answer := question.AskQuestion(input)
-	th.Equals(t, expectedImageId, answer)
-
-	cleanupQuestionTest()
-}
-
-/*
 Other Question Asking Tests
 */
 
@@ -948,12 +836,12 @@ func TestAskInstanceId_DescribeInstancesPagesError(t *testing.T) {
 }
 
 func TestAskInstanceIds_Success(t *testing.T) {
-	const expectedInstance = "i-12345"
+	expectedInstances := []string{"i-12345"}
 
 	testEC2.Svc = &th.MockedEC2Svc{
 		Instances: []*ec2.Instance{
 			{
-				InstanceId: aws.String(expectedInstance),
+				InstanceId: aws.String(expectedInstances[0]),
 			},
 			{
 				InstanceId: aws.String("i-67890"),
@@ -966,7 +854,7 @@ func TestAskInstanceIds_Success(t *testing.T) {
 
 	answer, err := question.AskInstanceIds(testEC2, addedInstances)
 	th.Ok(t, err)
-	th.Equals(t, expectedInstance, *answer)
+	th.Equals(t, expectedInstances, answer)
 
 	cleanupQuestionTest()
 }

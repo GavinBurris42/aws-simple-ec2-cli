@@ -88,28 +88,18 @@ func terminateInteractive(h *ec2helper.EC2Helper) {
 	h.ChangeRegion(*region)
 
 	// Keep asking for instance ids for termination
-	instanceIds := []string{}
-	for {
-		// Ask instance ID
-		instanceIdAnswer, err := question.AskInstanceIds(h, instanceIds)
-		if cli.ShowError(err, "Terminate Error") {
-			return
-		}
-
-		if instanceIdAnswer == nil || *instanceIdAnswer == cli.ResponseNo {
-			break
-		} else {
-			instanceIds = append(instanceIds, *instanceIdAnswer)
-		}
+	instanceIdAnswer, err := question.AskInstanceIds(h, []string{})
+	if cli.ShowError(err, "Terminate Error") {
+		return
 	}
 
-	confirmationAnswer, err := question.AskTerminationConfirmation(instanceIds)
+	confirmationAnswer, err := question.AskTerminationConfirmation(instanceIdAnswer)
 	if cli.ShowError(err, "Asking termination confirmation failed") {
 		return
 	}
 
 	if confirmationAnswer == cli.ResponseYes {
-		cli.ShowError(h.TerminateInstances(instanceIds), "Terminating instances failed")
+		cli.ShowError(h.TerminateInstances(instanceIdAnswer), "Terminating instances failed")
 	}
 }
 

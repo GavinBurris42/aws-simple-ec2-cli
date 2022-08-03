@@ -14,11 +14,9 @@
 package question
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -41,16 +39,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const yesNoOption = "[ yes / no ]"
-
 var DefaultCapacityTypeText = struct {
 	OnDemand, Spot string
 }{
 	OnDemand: "On-Demand",
 	Spot:     "Spot",
 }
-var yesNoData = [][]string{{cli.ResponseYes}, {cli.ResponseNo}}
-var yesNoOptions = []string{cli.ResponseYes, cli.ResponseNo}
 
 type CheckInput func(*ec2helper.EC2Helper, string) bool
 
@@ -65,83 +59,6 @@ type AskQuestionInput struct {
 	AcceptAnyInteger  bool
 	EC2Helper         *ec2helper.EC2Helper
 	Fns               []CheckInput
-}
-
-// Ask a question on CLI, with a default input and a list of valid inputs.
-func AskQuestion(input *AskQuestionInput) string {
-	fmt.Println()
-	if input.OptionsString != nil {
-		fmt.Print(*input.OptionsString)
-	}
-
-	// Keep asking for user input until one valid input in entered
-	for {
-		// GetQuestion displays question with default values
-		GetQuestion(input)
-
-		// Read input from the user and convert CRLF to LF
-		reader := bufio.NewReader(os.Stdin)
-		answer, _ := reader.ReadString('\n')
-		answer = strings.Replace(answer, "\n", "", -1)
-
-		// If no input is entered, simply return the default value, if there is one
-		if answer == "" && input.DefaultOption != nil {
-			return *input.DefaultOption
-		}
-
-		// Check if the answer is a valid index in the indexed options. If so, return the option value
-		if input.IndexedOptions != nil {
-			index, err := strconv.Atoi(answer)
-			if err == nil && index >= 1 && index <= len(input.IndexedOptions) {
-				return input.IndexedOptions[index-1]
-			}
-		}
-
-		// Check if the input matches any string option. If so, return it immediately
-		if input.StringOptions != nil {
-			for _, input := range input.StringOptions {
-				if input == answer {
-					return answer
-				}
-			}
-		}
-
-		// Check if any CheckInput function validates the input. If so, return it immediately
-		if input.EC2Helper != nil && input.Fns != nil {
-			for _, fn := range input.Fns {
-				if fn(input.EC2Helper, answer) {
-					return answer
-				}
-			}
-		}
-
-		// If an arbitrary integer is allowed, try to parse the input as an integer
-		if input.AcceptAnyInteger {
-			_, err := strconv.Atoi(answer)
-			if err == nil {
-				return answer
-			}
-		}
-
-		// If an arbitrary string is allowed, return the answer anyway
-		if input.AcceptAnyString {
-			return answer
-		}
-
-		// No match at all
-		fmt.Println("Input invalid. Please try again.")
-	}
-}
-
-// GetQuestion displays question with default values
-func GetQuestion(input *AskQuestionInput) {
-	if input.DefaultOptionRepr != nil {
-		fmt.Printf("%s [%s]:  ", input.QuestionString, *input.DefaultOptionRepr)
-	} else if input.DefaultOption != nil {
-		fmt.Printf("%s [%s]:  ", input.QuestionString, *input.DefaultOption)
-	} else {
-		fmt.Printf(input.QuestionString + ": ")
-	}
 }
 
 // Ask for the region to use
@@ -181,7 +98,7 @@ func AskRegion(h *ec2helper.EC2Helper, defaultRegion string) (*string, error) {
 
 	model := &questionModel.SingleSelectList{}
 	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		QuestionString: question,
 		DefaultOption:  *defaultOption,
 		IndexedOptions: indexedOptions,
@@ -252,7 +169,7 @@ func AskLaunchTemplate(h *ec2helper.EC2Helper, defaultLaunchTemplateId string) (
 		DefaultOption:  defaultOption,
 		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		QuestionString: question,
 	})
 
@@ -304,7 +221,7 @@ func AskLaunchTemplateVersion(h *ec2helper.EC2Helper, launchTemplateId string, d
 		DefaultOption:  defaultOption,
 		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		QuestionString: question,
 	})
 
@@ -354,7 +271,7 @@ func AskIfEnterInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) 
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
 		DefaultOption:  *defaultOption,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -503,7 +420,7 @@ func AskInstanceTypeInstanceSelector(h *ec2helper.EC2Helper, instanceSelector ec
 	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		HeaderStrings:  headers,
 	})
 
@@ -583,7 +500,7 @@ func AskImage(h *ec2helper.EC2Helper, instanceType string, defaultImageId string
 		HeaderStrings:  headers,
 		QuestionString: question,
 		DefaultOption:  defaultOption,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		IndexedOptions: indexedOptions,
 		EC2Helper:      h,
 		Fns:            []questionModel.CheckInput{ec2helper.ValidateImageId},
@@ -610,7 +527,7 @@ func AskImage(h *ec2helper.EC2Helper, instanceType string, defaultImageId string
 // Ask if the users want to keep EBS volumes after instance termination
 func AskKeepEbsVolume(defaultKeepEbs bool) (string, error) {
 	question := "Persist EBS Volume(s) after the instance is terminated?"
-	answer, err := askYesNoQuestion(question, defaultKeepEbs)
+	answer, err := questionModel.AskYesNoQuestion(question, defaultKeepEbs)
 
 	if err != nil {
 		return "", err
@@ -679,7 +596,7 @@ func AskIamProfile(i *iamhelper.IAMHelper, defaultIamProfile string) (string, er
 		DefaultOption:  defaultOptionValue,
 		IndexedOptions: indexedOptions,
 		HeaderStrings:  headers,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -753,7 +670,7 @@ func AskVpc(h *ec2helper.EC2Helper, defaultVpcId string) (*string, error) {
 		QuestionString: question,
 		DefaultOption:  defaultOptionValue,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		HeaderStrings:  headers,
 	})
 
@@ -804,7 +721,7 @@ func AskSubnet(h *ec2helper.EC2Helper, vpcId string, defaultSubnetId string) (*s
 		QuestionString: question,
 		DefaultOption:  *defaultOptionValue,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		HeaderStrings:  headers,
 	})
 
@@ -850,7 +767,7 @@ func AskSubnetPlaceholder(h *ec2helper.EC2Helper, defaultAzId string) (*string, 
 		DefaultOption:  *defaultOptionValue,
 		IndexedOptions: indexedOptions,
 		HeaderStrings:  headers,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -899,7 +816,7 @@ func AskSecurityGroups(groups []*ec2.SecurityGroup, defaultSecurityGroups []*ec2
 		DefaultOptionList: defaultOptionList,
 		IndexedOptions:    indexedOptions,
 		HeaderStrings:     headers,
-		OptionData:        data,
+		Rows:              questionModel.CreateSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -912,6 +829,8 @@ func AskSecurityGroups(groups []*ec2.SecurityGroup, defaultSecurityGroups []*ec2
 // Ask the users to select a security group placeholder
 func AskSecurityGroupPlaceholder() (string, error) {
 	data := [][]string{}
+	rows := []questionModel.Row{}
+	_ = rows
 	indexedOptions := []string{}
 
 	// Add the options
@@ -926,7 +845,7 @@ func AskSecurityGroupPlaceholder() (string, error) {
 	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 	})
 
 	if err != nil {
@@ -1035,7 +954,15 @@ func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *c
 		{cli.ResourceImage, simpleConfig.ImageId},
 	}
 
-	indexedOptions := []string{}
+	rows := questionModel.CreateSingleLineRows(data)
+	indexedOptions := []string{
+		"",
+		cli.ResourceVpc,
+		cli.ResourceSubnet,
+		cli.ResourceInstanceType,
+		cli.ResourceCapacityType,
+		cli.ResourceImage,
+	}
 
 	/*
 		Append all security groups.
@@ -1044,103 +971,95 @@ func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *c
 		Also, use the bool value to tell the next block what question option to use for security group
 	*/
 	if detailedConfig.SecurityGroups != nil {
-		data = table.AppendSecurityGroups(data, detailedConfig.SecurityGroups)
+		_, row := table.AppendSecurityGroups(data, detailedConfig.SecurityGroups)
+		if len(row) != 0 {
+			rows = append(rows, row)
+			indexedOptions = append(indexedOptions, cli.ResourceSecurityGroup)
+		}
 	} else if simpleConfig.SecurityGroupIds != nil && len(simpleConfig.SecurityGroupIds) >= 1 {
 		if simpleConfig.SecurityGroupIds[0] == cli.ResponseNew {
-			data = append(data, []string{cli.ResourceSecurityGroup, "New security group for SSH"})
+			rows = append(rows, [][]string{{cli.ResourceSecurityGroup, "New security group for SSH"}})
 		} else if simpleConfig.SecurityGroupIds[0] == cli.ResponseAll {
-			data = append(data, []string{cli.ResourceSecurityGroup, "New default security group"})
+			rows = append(rows, [][]string{{cli.ResourceSecurityGroup, "New default security group"}})
 		}
 	}
 
 	if ec2helper.HasEbsVolume(detailedConfig.Image) {
-		data = append(data, []string{cli.ResourceKeepEbsVolume,
-			strconv.FormatBool(simpleConfig.KeepEbsVolumeAfterTermination)})
+		rows = append(rows, [][]string{{cli.ResourceKeepEbsVolume,
+			strconv.FormatBool(simpleConfig.KeepEbsVolumeAfterTermination)}})
+		indexedOptions = append(indexedOptions, cli.ResourceKeepEbsVolume)
 	}
 
 	if detailedConfig.Image.PlatformDetails != nil &&
 		ec2helper.IsLinux(*detailedConfig.Image.PlatformDetails) {
 		if simpleConfig.AutoTerminationTimerMinutes > 0 {
-			data = append(data, []string{cli.ResourceAutoTerminationTimer,
-				strconv.Itoa(simpleConfig.AutoTerminationTimerMinutes)})
+			rows = append(rows, [][]string{{cli.ResourceAutoTerminationTimer,
+				strconv.Itoa(simpleConfig.AutoTerminationTimerMinutes)}})
 		} else {
-			data = append(data, []string{cli.ResourceAutoTerminationTimer, "None"})
+			rows = append(rows, [][]string{{cli.ResourceAutoTerminationTimer, "None"}})
 		}
-	}
-
-	// If edit is allowed, give all items a number and fill the indexed options
-	if allowEdit {
-		for i := 0; i < len(data); i++ {
-			// Skip region
-			if data[i][0] == cli.ResourceRegion {
-				continue
-			}
-
-			/*
-				Only add an option number for rows that has a value in the first column,
-				because some rows are subrows
-			*/
-			if data[i][0] != "" {
-				/*
-					If the row is for placeholder security group or placeholder subnet,
-					append a placeholder option.
-					Otherwise, append the first column of the row as option
-				*/
-				if simpleConfig.NewVPC {
-					if data[i][0] == cli.ResourceSecurityGroup {
-						indexedOptions = append(indexedOptions, cli.ResourceSecurityGroupPlaceholder)
-					} else if data[i][0] == cli.ResourceSubnet {
-						indexedOptions = append(indexedOptions, cli.ResourceSubnetPlaceholder)
-					} else {
-						indexedOptions = append(indexedOptions, data[i][0])
-					}
-				} else {
-					indexedOptions = append(indexedOptions, data[i][0])
-				}
-				data[i][0] = fmt.Sprintf("%s", data[i][0])
-			}
-		}
+		indexedOptions = append(indexedOptions, cli.ResourceAutoTerminationTimer)
 	}
 
 	// Append all EBS blocks, if applicable
 	blockDeviceMappings := detailedConfig.Image.BlockDeviceMappings
-	data = table.AppendEbs(data, blockDeviceMappings)
+	if len(blockDeviceMappings) != 0 {
+		_, row := table.AppendEbs(data, blockDeviceMappings)
+		rows = append(rows, row)
+		indexedOptions = append(indexedOptions, "")
+	}
 
 	// Append instance store, if applicable
 	if detailedConfig.InstanceTypeInfo.InstanceStorageInfo != nil {
-		data = append(data, []string{"Instance Storage", fmt.Sprintf("%d GB",
-			*detailedConfig.InstanceTypeInfo.InstanceStorageInfo.TotalSizeInGB)})
+		rows = append(rows, [][]string{{"Instance Storage", fmt.Sprintf("%d GB",
+			*detailedConfig.InstanceTypeInfo.InstanceStorageInfo.TotalSizeInGB)}})
+		indexedOptions = append(indexedOptions, "")
 	}
 
 	// Append instance profile, if applicable
 	if simpleConfig.IamInstanceProfile != "" {
-		data = append(data, []string{cli.ResourceIamInstanceProfile, simpleConfig.IamInstanceProfile})
+		rows = append(rows, [][]string{{cli.ResourceIamInstanceProfile, simpleConfig.IamInstanceProfile}})
+		indexedOptions = append(indexedOptions, cli.ResourceIamInstanceProfile)
 	}
 
 	if simpleConfig.BootScriptFilePath != "" {
-		data = append(data, []string{cli.ResourceBootScriptFilePath, simpleConfig.BootScriptFilePath})
+		rows = append(rows, [][]string{{cli.ResourceBootScriptFilePath, simpleConfig.BootScriptFilePath}})
+		indexedOptions = append(indexedOptions, cli.ResourceBootScriptFilePath)
 	}
 	if len(simpleConfig.UserTags) != 0 {
-		var tags []string
+		var tags [][]string
+		index := 0
 		for k, v := range simpleConfig.UserTags {
-			tags = append(tags, fmt.Sprintf("%s|%s", k, v))
+			tag := fmt.Sprintf("%s|%s", k, v)
+			if index == 0 {
+				tags = append(tags, []string{cli.ResourceUserTags, tag})
+			} else {
+				tags = append(tags, []string{"", tag})
+			}
+			index++
 		}
-		data = append(data, []string{cli.ResourceUserTags, strings.Join(tags, "\n")})
+		rows = append(rows, tags)
+		indexedOptions = append(indexedOptions, cli.ResourceUserTags)
 	}
 
-	answer, err := askConfigTableQuestion(data)
+	model := &questionModel.Confirmation{}
+	model.SetAllowEdit(allowEdit)
+	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+		IndexedOptions: indexedOptions,
+		Rows:           rows,
+	})
 
 	if err != nil {
 		return "", err
 	}
 
-	return answer, nil
+	return model.GetChoice(), nil
 }
 
 // Ask if the user wants to save the config as a JSON config file
 func AskSaveConfig() (string, error) {
 	question := "Do you want to save the configuration above as a JSON file that can be used in non-interactive mode and as question defaults? "
-	answer, err := askYesNoQuestion(question, false)
+	answer, err := questionModel.AskYesNoQuestion(question, false)
 
 	if err != nil {
 		return "", err
@@ -1169,22 +1088,25 @@ func AskInstanceId(h *ec2helper.EC2Helper) (*string, error) {
 	data := [][]string{}
 	indexedOptions := []string{}
 
-	data, indexedOptions, _ = table.AppendInstances(data, indexedOptions, instances, nil)
+	data, indexedOptions, _, rows := table.AppendInstances(data, indexedOptions, instances, nil)
 
-	optionsText := table.BuildTable(data, []string{"Option", "Instance", "Tag-Key", "Tag-Value"})
+	headers := []string{"Instance", "Tag-Key", "Tag-Value"}
 	question := "Select the instance you want to connect to: "
 
-	answer := AskQuestion(&AskQuestionInput{
+	model := &questionModel.SingleSelectList{}
+	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+		Rows:           rows,
 		QuestionString: question,
-		OptionsString:  &optionsText,
+		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
 	})
 
+	answer := model.GetChoice()
 	return &answer, nil
 }
 
 // Ask the instance IDs to be terminated
-func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) (*string, error) {
+func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) ([]string, error) {
 	// Only include non-terminated states
 	states := []string{
 		ec2.InstanceStateNamePending,
@@ -1201,8 +1123,9 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) (*string,
 	data := [][]string{}
 	indexedOptions := []string{}
 
-	data, indexedOptions, finalCounter := table.AppendInstances(data, indexedOptions, instances,
+	data, indexedOptions, _, rows := table.AppendInstances(data, indexedOptions, instances,
 		addedInstanceIds)
+	_ = rows
 
 	// There are no instances available for termination in selected region
 	if len(data) <= 0 && len(addedInstanceIds) == 0 {
@@ -1214,32 +1137,25 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) (*string,
 		return nil, nil
 	}
 
-	// Add "done" option, if instance(s) are already selected
-	if len(addedInstanceIds) > 0 {
-		indexedOptions = append(indexedOptions, cli.ResponseNo)
-		data = append(data, []string{fmt.Sprintf("%d.", finalCounter+1),
-			"Don't add any more instance id"})
-	}
+	headers := []string{"Instance", "Tag-Key", "Tag-Value"}
+	question := "Select the instances you want to terminate: "
 
-	optionsText := table.BuildTable(data, []string{"Option", "Instance", "Tag-Key", "Tag-Value"})
-	question := "Select the instance you want to terminate: "
-	if len(addedInstanceIds) > 0 {
-		question = "If you wish to terminate multiple instance(s), add from the following: "
-	}
-
-	answer := AskQuestion(&AskQuestionInput{
+	model := &questionModel.MultiSelectList{}
+	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
-		OptionsString:  &optionsText,
+		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
+		Rows:           rows,
 	})
 
-	return &answer, err
+	answer := model.GetSelectedValues()
+	return answer, err
 }
 
 // AskBootScriptConfirmation confirms if the user should be prompted to enter in a bootscript
 func AskBootScriptConfirmation(h *ec2helper.EC2Helper, defaultBootScript string) (string, error) {
 	question := "Would you like to add a filepath to the instance boot script?"
-	answer, err := askYesNoQuestion(question, defaultBootScript != "")
+	answer, err := questionModel.AskYesNoQuestion(question, defaultBootScript != "")
 
 	if err != nil {
 		return "", err
@@ -1274,7 +1190,7 @@ func AskBootScript(h *ec2helper.EC2Helper, defaultBootScript string) (string, er
 // AskUserTagsConfirmation confirms if the user should be prompted to enter in tags
 func AskUserTagsConfirmation(h *ec2helper.EC2Helper, defaultTags map[string]string) (string, error) {
 	question := "Would you like to add tags to instances and persisted volumes?"
-	answer, err := askYesNoQuestion(question, len(defaultTags) != 0)
+	answer, err := questionModel.AskYesNoQuestion(question, len(defaultTags) != 0)
 
 	if err != nil {
 		return "", err
@@ -1308,7 +1224,7 @@ func AskUserTags(h *ec2helper.EC2Helper, defaultTags map[string]string) (string,
 // AskTerminationConfirmation confirms if the user wants to terminate the selected instanceIds
 func AskTerminationConfirmation(instanceIds []string) (string, error) {
 	question := fmt.Sprintf("Are you sure you want to terminate %d instance(s): %s ", len(instanceIds), instanceIds)
-	answer, err := askYesNoQuestion(question, false)
+	answer, err := questionModel.AskYesNoQuestion(question, false)
 
 	if err != nil {
 		return "", err
@@ -1355,30 +1271,8 @@ func AskCapacityType(instanceType string, region string, defaultCapacityType str
 		QuestionString: question,
 		DefaultOption:  defaultOption,
 		IndexedOptions: indexedOptions,
-		OptionData:     data,
+		Rows:           questionModel.CreateSingleLineRows(data),
 		HeaderStrings:  headers,
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	return model.GetChoice(), nil
-}
-
-// askYesNoQuestion asks a yes or no question
-func askYesNoQuestion(question string, defaultToYes bool) (string, error) {
-	defaultOption := cli.ResponseNo
-	if defaultToYes {
-		defaultOption = cli.ResponseYes
-	}
-
-	model := &questionModel.SingleSelectList{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
-		QuestionString: question,
-		IndexedOptions: yesNoOptions,
-		DefaultOption:  defaultOption,
-		OptionData:     yesNoData,
 	})
 
 	if err != nil {
@@ -1397,10 +1291,10 @@ func askConfigTableQuestion(tableData [][]string) (string, error) {
 	configList.InitializeModel(&questionModel.QuestionInput{
 		QuestionString: question,
 		HeaderStrings:  headers,
-		OptionData:     tableData,
+		Rows:           questionModel.CreateSingleLineRows(tableData),
 	})
 
-	answer, err := askYesNoQuestion(configList.PrintTable(), false)
+	answer, err := questionModel.AskYesNoQuestion(configList.PrintTable(), false)
 
 	if err != nil {
 		return "", err

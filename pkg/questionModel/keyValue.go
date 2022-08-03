@@ -76,7 +76,7 @@ func (kv *KeyValue) InitializeModel(input *QuestionInput) {
 	// Initializes the created tag list
 	tagList := &SingleSelectList{}
 	tagList.InitializeModel(&QuestionInput{
-		OptionData:    kv.tags,
+		Rows:          CreateSingleLineRows(kv.tags),
 		HeaderStrings: tagHeaders,
 	})
 	tagList.list.Select(-1)
@@ -199,7 +199,7 @@ func (kv *KeyValue) addTag() {
 	if kv.inputs[0].Value() != "" && kv.inputs[1].Value() != "" {
 		kv.tags = append(kv.tags, []string{strings.TrimSpace(kv.inputs[0].Value()), strings.TrimSpace(kv.inputs[1].Value())})
 		kv.tagList.InitializeModel(&QuestionInput{
-			OptionData:    kv.tags,
+			Rows:          CreateSingleLineRows(kv.tags),
 			HeaderStrings: tagHeaders,
 		})
 		kv.inputs[0].Placeholder = "Key"
