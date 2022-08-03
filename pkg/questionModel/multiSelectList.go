@@ -35,7 +35,7 @@ type MultiSelectList struct {
 	errorMsg        string          // Error msg allerting the user they have to choose an option
 }
 
-// InitializeModel initializes the model based on the passed in question input
+// InitializeModel initializes the model based on the passed in question input.
 func (m *MultiSelectList) InitializeModel(input *QuestionInput) {
 	header, items, itemMap := createItems(input)
 	items = append(items, item("SUBMIT"))
