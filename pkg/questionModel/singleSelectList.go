@@ -108,7 +108,7 @@ func (s *SingleSelectList) View() string {
 func (s *SingleSelectList) GetChoice() string { return s.choice }
 
 // getError gets the error from the question if one arose
-func (s *SingleSelectList) getError() error { return s.err }
+func (s *SingleSelectList) GetError() error { return s.err }
 
 // selectItem selects the focused item in the list
 func (s *SingleSelectList) selectItem() {

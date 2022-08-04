@@ -161,7 +161,7 @@ func (m *MultiSelectList) selectItem() {
 }
 
 // getError gets the error from the question if one arose
-func (m *MultiSelectList) getError() error { return m.err }
+func (m *MultiSelectList) GetError() error { return m.err }
 
 // isButtonFocused returns if the submit button is focused or not
 func (m *MultiSelectList) isButtonFocused() bool { return m.list.Cursor() == len(m.list.Items())-1 }

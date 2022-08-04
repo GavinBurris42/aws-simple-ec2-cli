@@ -28,6 +28,7 @@ import (
 	"simple-ec2/pkg/ec2helper"
 	"simple-ec2/pkg/iamhelper"
 	"simple-ec2/pkg/question"
+	"simple-ec2/pkg/questionModel"
 	th "simple-ec2/test/testhelper"
 
 	"github.com/aws/amazon-ec2-instance-selector/v2/pkg/instancetypes"
@@ -35,6 +36,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 var testEC2 = &ec2helper.EC2Helper{
@@ -44,6 +46,7 @@ var testEC2 = &ec2helper.EC2Helper{
 		},
 	},
 }
+var testQMHelper = &questionModel.QuestionModelHelper{}
 var defaultArchitecture = aws.StringSlice([]string{"x86_64"})
 
 /*
@@ -52,7 +55,6 @@ Other Question Asking Tests
 
 func TestAskRegion_Success(t *testing.T) {
 	const expectedRegion = "us-east-2"
-	initQuestionTest(t, "1\n")
 
 	testEC2.Svc = &th.MockedEC2Svc{
 		Regions: []*ec2.Region{
@@ -68,11 +70,17 @@ func TestAskRegion_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskRegion(testEC2, "")
+	testQMHelper.Svc = &th.MockedQMHelperSvc{
+		UserInputs: []tea.Msg{
+			tea.KeyMsg{
+				Type: tea.KeyEnter,
+			},
+		},
+	}
+
+	answer, err := question.AskRegion(testEC2, testQMHelper, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedRegion, *answer)
-
-	cleanupQuestionTest()
 }
 
 func TestAskRegion_DescribeRegionsError(t *testing.T) {
@@ -82,7 +90,7 @@ func TestAskRegion_DescribeRegionsError(t *testing.T) {
 
 	initQuestionTest(t, "\n")
 
-	_, err := question.AskRegion(testEC2, "")
+	_, err := question.AskRegion(testEC2, testQMHelper, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -107,7 +115,7 @@ func TestAskLaunchTemplate_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskLaunchTemplate(testEC2, "")
+	answer, err := question.AskLaunchTemplate(testEC2, testQMHelper, "")
 	th.Equals(t, expectedTemplateId, *answer)
 
 	th.Ok(t, err)
@@ -121,7 +129,7 @@ func TestAskLaunchTemplate_DescribeLaunchTemplatesPagesError(t *testing.T) {
 
 	initQuestionTest(t, "\n")
 
-	answer, err := question.AskLaunchTemplate(testEC2, "")
+	answer, err := question.AskLaunchTemplate(testEC2, testQMHelper, "")
 	th.Equals(t, cli.ResponseNo, *answer)
 
 	th.Ok(t, err)
@@ -149,7 +157,7 @@ func TestAskLaunchTemplateVersion_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskLaunchTemplateVersion(testEC2, testTemplateId, "")
+	answer, err := question.AskLaunchTemplateVersion(testEC2, testQMHelper, testTemplateId, "")
 	th.Ok(t, err)
 	th.Equals(t, strconv.Itoa(testVersion), *answer)
 
@@ -165,7 +173,7 @@ func TestAskLaunchTemplateVersion_DescribeLaunchTemplateVersionsPagesError(t *te
 
 	initQuestionTest(t, "\n")
 
-	_, err := question.AskLaunchTemplateVersion(testEC2, testTemplateId, "")
+	_, err := question.AskLaunchTemplateVersion(testEC2, testQMHelper, testTemplateId, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -184,7 +192,7 @@ func TestAskIfEnterInstanceType_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskIfEnterInstanceType(testEC2, "")
+	answer, err := question.AskIfEnterInstanceType(testEC2, testQMHelper, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedInstanceType, *answer)
 
@@ -198,7 +206,7 @@ func TestAskIfEnterInstanceType_(t *testing.T) {
 
 	initQuestionTest(t, "\n")
 
-	_, err := question.AskIfEnterInstanceType(testEC2, "")
+	_, err := question.AskIfEnterInstanceType(testEC2, testQMHelper, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -217,7 +225,7 @@ func TestAskInstanceType_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskInstanceType(testEC2, "")
+	answer, err := question.AskInstanceType(testEC2, testQMHelper, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedInstanceType, *answer)
 
@@ -231,7 +239,7 @@ func TestAskInstanceType_DescribeInstanceTypesPagesError(t *testing.T) {
 
 	initQuestionTest(t, "\n")
 
-	_, err := question.AskInstanceType(testEC2, "")
+	_, err := question.AskInstanceType(testEC2, testQMHelper, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -241,7 +249,7 @@ func TestAskInstanceTypeVCpu(t *testing.T) {
 	const expectedVcpus = "2"
 	initQuestionTest(t, expectedVcpus+"\n")
 
-	answer, err := question.AskInstanceTypeVCpu(testEC2)
+	answer, err := question.AskInstanceTypeVCpu(testEC2, testQMHelper)
 	th.Equals(t, expectedVcpus, answer)
 
 	th.Ok(t, err)
@@ -252,7 +260,7 @@ func TestAskInstanceTypeMemory(t *testing.T) {
 	const expectedMemory = "2"
 	initQuestionTest(t, expectedMemory+"\n")
 
-	answer, err := question.AskInstanceTypeMemory(testEC2)
+	answer, err := question.AskInstanceTypeMemory(testEC2, testQMHelper)
 	th.Equals(t, expectedMemory, answer)
 
 	th.Ok(t, err)
@@ -280,7 +288,7 @@ func TestAskImage_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskImage(testEC2, testInstanceType, "")
+	answer, err := question.AskImage(testEC2, testQMHelper, testInstanceType, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedImage, *answer.ImageId)
 
@@ -301,7 +309,7 @@ func TestAskImage_NoImage(t *testing.T) {
 		},
 	}
 
-	_, err := question.AskImage(testEC2, testInstanceType, "")
+	_, err := question.AskImage(testEC2, testQMHelper, testInstanceType, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -315,7 +323,7 @@ func TestAskImage_DescribeInstanceTypesPagesError(t *testing.T) {
 		DescribeInstanceTypesPagesError: errors.New("Test error"),
 	}
 
-	_, err := question.AskImage(testEC2, testInstanceType, "")
+	_, err := question.AskImage(testEC2, testQMHelper, testInstanceType, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -336,7 +344,7 @@ func TestAskImage_DescribeImagesError(t *testing.T) {
 		DescribeImagesError: errors.New("Test error"),
 	}
 
-	_, err := question.AskImage(testEC2, testInstanceType, "")
+	_, err := question.AskImage(testEC2, testQMHelper, testInstanceType, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -346,7 +354,7 @@ func TestAskKeepEbsVolume(t *testing.T) {
 	const expectedAnswer = cli.ResponseYes
 	initQuestionTest(t, expectedAnswer+"\n")
 
-	answer, err := question.AskKeepEbsVolume(true)
+	answer, err := question.AskKeepEbsVolume(testQMHelper, true)
 	th.Equals(t, expectedAnswer, answer)
 
 	th.Ok(t, err)
@@ -357,7 +365,7 @@ func TestAskAutoTerminationTimerMinutes(t *testing.T) {
 	const expectedAnswer = "30"
 	initQuestionTest(t, expectedAnswer+"\n")
 
-	answer, err := question.AskAutoTerminationTimerMinutes(testEC2, 0)
+	answer, err := question.AskAutoTerminationTimerMinutes(testEC2, testQMHelper, 0)
 	th.Equals(t, expectedAnswer, answer)
 
 	th.Ok(t, err)
@@ -389,7 +397,7 @@ func TestAskVpc_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskVpc(testEC2, "")
+	answer, err := question.AskVpc(testEC2, testQMHelper, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedVpc, *answer)
 
@@ -403,7 +411,7 @@ func TestAskVpc_DescribeVpcsPagesError(t *testing.T) {
 		DescribeVpcsPagesError: errors.New("Test error"),
 	}
 
-	_, err := question.AskVpc(testEC2, "")
+	_, err := question.AskVpc(testEC2, testQMHelper, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -437,7 +445,7 @@ func TestAskSubnet_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskSubnet(testEC2, testVpc, "")
+	answer, err := question.AskSubnet(testEC2, testQMHelper, testVpc, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedSubnet, *answer)
 
@@ -452,7 +460,7 @@ func TestAskSubnet_DescribeSubnetsPagesError(t *testing.T) {
 		DescribeSubnetsPagesError: errors.New("Test error"),
 	}
 
-	_, err := question.AskSubnet(testEC2, testVpc, "")
+	_, err := question.AskSubnet(testEC2, testQMHelper, testVpc, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -475,7 +483,7 @@ func TestAskSubnetPlaceholder_Success(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskSubnetPlaceholder(testEC2, "")
+	answer, err := question.AskSubnetPlaceholder(testEC2, testQMHelper, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedAz, *answer)
 
@@ -490,7 +498,7 @@ func TestAskSubnetPlaceholder_DescribeAvailabilityZonesError(t *testing.T) {
 		DescribeAvailabilityZonesError: errors.New("Test error"),
 	}
 
-	_, err := question.AskSubnetPlaceholder(testEC2, "")
+	_, err := question.AskSubnetPlaceholder(testEC2, testQMHelper, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -538,7 +546,7 @@ func TestAskSecurityGroups_Success(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	answer, err := question.AskSecurityGroups(testSecurityGroups, defaultGroups)
+	answer, err := question.AskSecurityGroups(testQMHelper, testSecurityGroups, defaultGroups)
 	th.Equals(t, expectedGroup, answer)
 
 	th.Ok(t, err)
@@ -551,7 +559,7 @@ func TestAskSecurityGroups_NoGroup(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	answer, err := question.AskSecurityGroups(testSecurityGroups, defaultGroups)
+	answer, err := question.AskSecurityGroups(testQMHelper, testSecurityGroups, defaultGroups)
 	th.Equals(t, cli.ResponseNo, answer)
 
 	th.Ok(t, err)
@@ -561,7 +569,7 @@ func TestAskSecurityGroups_NoGroup(t *testing.T) {
 func TestAskSecurityGroupPlaceholder(t *testing.T) {
 	initQuestionTest(t, "1\n")
 
-	answer, err := question.AskSecurityGroupPlaceholder()
+	answer, err := question.AskSecurityGroupPlaceholder(testQMHelper)
 	th.Equals(t, cli.ResponseAll, answer)
 
 	th.Ok(t, err)
@@ -593,7 +601,7 @@ func TestAskConfirmationWithTemplate_Success_NoOverriding(t *testing.T) {
 
 	initQuestionTest(t, expectedAnswer+"\n")
 
-	answer, err := question.AskConfirmationWithTemplate(testEC2, testSimpleConfig)
+	answer, err := question.AskConfirmationWithTemplate(testEC2, testQMHelper, testSimpleConfig)
 	th.Ok(t, err)
 	th.Equals(t, expectedAnswer, *answer)
 
@@ -628,7 +636,7 @@ func TestAskConfirmationWithTemplate_Success_Overriding(t *testing.T) {
 
 	initQuestionTest(t, expectedAnswer+"\n")
 
-	answer, err := question.AskConfirmationWithTemplate(testEC2, testSimpleConfig)
+	answer, err := question.AskConfirmationWithTemplate(testEC2, testQMHelper, testSimpleConfig)
 	th.Ok(t, err)
 	th.Equals(t, expectedAnswer, *answer)
 
@@ -665,7 +673,7 @@ func TestAskConfirmationWithTemplate_DescribeSubnetsPagesError(t *testing.T) {
 
 	initQuestionTest(t, cli.ResponseYes+"\n")
 
-	_, err := question.AskConfirmationWithTemplate(testEC2, testSimpleConfig)
+	_, err := question.AskConfirmationWithTemplate(testEC2, testQMHelper, testSimpleConfig)
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -680,7 +688,7 @@ func TestAskConfirmationWithTemplate_DescribeLaunchTemplateVersionsPagesError(t 
 
 	initQuestionTest(t, cli.ResponseYes+"\n")
 
-	_, err := question.AskConfirmationWithTemplate(testEC2, testSimpleConfig)
+	_, err := question.AskConfirmationWithTemplate(testEC2, testQMHelper, testSimpleConfig)
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -749,7 +757,7 @@ func TestAskConfirmationWithInput_Success_NoNewInfrastructure(t *testing.T) {
 	const expectedAnswer = cli.ResponseYes
 	initQuestionTest(t, expectedAnswer+"\n")
 
-	answer, err := question.AskConfirmationWithInput(testSimpleConfig, testDetailedConfig, true)
+	answer, err := question.AskConfirmationWithInput(testQMHelper, testSimpleConfig, testDetailedConfig, true)
 	th.Equals(t, expectedAnswer, answer)
 
 	th.Ok(t, err)
@@ -768,7 +776,7 @@ func TestAskConfirmationWithInput_Success_NewInfrastructure(t *testing.T) {
 
 	initQuestionTest(t, expectedAnswer+"\n")
 
-	answer, err := question.AskConfirmationWithInput(testSimpleConfig, testDetailedConfig, true)
+	answer, err := question.AskConfirmationWithInput(testQMHelper, testSimpleConfig, testDetailedConfig, true)
 	th.Equals(t, expectedAnswer, answer)
 
 	th.Ok(t, err)
@@ -779,7 +787,7 @@ func TestAskSaveConfig(t *testing.T) {
 	const expectedAnswer = cli.ResponseYes
 	initQuestionTest(t, expectedAnswer+"\n")
 
-	answer, err := question.AskSaveConfig()
+	answer, err := question.AskSaveConfig(testQMHelper)
 	th.Equals(t, expectedAnswer, answer)
 
 	th.Ok(t, err)
@@ -802,7 +810,7 @@ func TestAskInstanceId_Success(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	answer, err := question.AskInstanceId(testEC2)
+	answer, err := question.AskInstanceId(testEC2, testQMHelper)
 	th.Ok(t, err)
 	th.Equals(t, expectedInstance, *answer)
 
@@ -816,7 +824,7 @@ func TestAskInstanceId_NoInstance(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceId(testEC2)
+	_, err := question.AskInstanceId(testEC2, testQMHelper)
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -829,7 +837,7 @@ func TestAskInstanceId_DescribeInstancesPagesError(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceId(testEC2)
+	_, err := question.AskInstanceId(testEC2, testQMHelper)
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -852,7 +860,7 @@ func TestAskInstanceIds_Success(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	answer, err := question.AskInstanceIds(testEC2, addedInstances)
+	answer, err := question.AskInstanceIds(testEC2, testQMHelper, addedInstances)
 	th.Ok(t, err)
 	th.Equals(t, expectedInstances, answer)
 
@@ -865,7 +873,7 @@ func TestAskInstanceIds_NoInstance(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceIds(testEC2, addedInstances)
+	_, err := question.AskInstanceIds(testEC2, testQMHelper, addedInstances)
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -879,7 +887,7 @@ func TestAskInstanceIds_DescribeInstancesPagesError(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceIds(testEC2, addedInstances)
+	_, err := question.AskInstanceIds(testEC2, testQMHelper, addedInstances)
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -924,7 +932,7 @@ var testSelector = &th.MockedSelector{
 func TestAskInstanceTypeInstanceSelector_Success(t *testing.T) {
 	initQuestionTest(t, "1\n")
 
-	answer, err := question.AskInstanceTypeInstanceSelector(testEC2, testSelector, "2", "4")
+	answer, err := question.AskInstanceTypeInstanceSelector(testEC2, testQMHelper, testSelector, "2", "4")
 	th.Ok(t, err)
 	th.Equals(t, testInstanceType, *answer)
 
@@ -934,7 +942,7 @@ func TestAskInstanceTypeInstanceSelector_Success(t *testing.T) {
 func TestAskInstanceTypeInstanceSelector_BadVcpus(t *testing.T) {
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testSelector, "a", "4")
+	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testQMHelper, testSelector, "a", "4")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -943,7 +951,7 @@ func TestAskInstanceTypeInstanceSelector_BadVcpus(t *testing.T) {
 func TestAskInstanceTypeInstanceSelector_BadMemory(t *testing.T) {
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testSelector, "2", "a")
+	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testQMHelper, testSelector, "2", "a")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -956,7 +964,7 @@ func TestAskInstanceTypeInstanceSelector_NoResult(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testSelector, "2", "4")
+	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testQMHelper, testSelector, "2", "4")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -970,7 +978,7 @@ func TestAskInstanceTypeInstanceSelector_SelectorError(t *testing.T) {
 
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testSelector, "2", "4")
+	_, err := question.AskInstanceTypeInstanceSelector(testEC2, testQMHelper, testSelector, "2", "4")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -1001,7 +1009,7 @@ func TestAskIamProfile_Success(t *testing.T) {
 	iam := &iamhelper.IAMHelper{Client: mockedIam}
 	initQuestionTest(t, "2\n")
 
-	answer, err := question.AskIamProfile(iam, "")
+	answer, err := question.AskIamProfile(testQMHelper, iam, "")
 	th.Ok(t, err)
 	th.Equals(t, expectedProfileName, answer)
 
@@ -1015,7 +1023,7 @@ func TestAskIamProfile_Error(t *testing.T) {
 	iam := &iamhelper.IAMHelper{Client: mockedIam}
 	initQuestionTest(t, "1\n")
 
-	_, err := question.AskIamProfile(iam, "")
+	_, err := question.AskIamProfile(testQMHelper, iam, "")
 	th.Nok(t, err)
 
 	cleanupQuestionTest()
@@ -1026,7 +1034,7 @@ func TestAskCapacityType(t *testing.T) {
 	expectedCapacity := question.DefaultCapacityTypeText.Spot
 	initQuestionTest(t, "2\n")
 
-	answer, err := question.AskCapacityType(testInstanceType, testRegion, "")
+	answer, err := question.AskCapacityType(testQMHelper, testInstanceType, testRegion, "")
 	th.Equals(t, expectedCapacity, answer)
 
 	th.Ok(t, err)
@@ -1037,7 +1045,7 @@ func TestAskBootScriptConfirmation(t *testing.T) {
 	expectedConfirmation := cli.ResponseYes
 	initQuestionTest(t, cli.ResponseYes+"\n")
 
-	answer, err := question.AskBootScriptConfirmation(testEC2, "")
+	answer, err := question.AskBootScriptConfirmation(testEC2, testQMHelper, "")
 	th.Equals(t, expectedConfirmation, answer)
 
 	th.Ok(t, err)
@@ -1052,7 +1060,7 @@ func TestAskBootScript(t *testing.T) {
 	}
 	initQuestionTest(t, expectedBootScript.Name()+"\n")
 
-	answer, err := question.AskBootScript(testEC2, "")
+	answer, err := question.AskBootScript(testEC2, testQMHelper, "")
 	th.Equals(t, expectedBootScript.Name(), answer)
 
 	th.Ok(t, err)
@@ -1065,7 +1073,7 @@ func TestAskUserTagsConfirmation(t *testing.T) {
 
 	userTags := make(map[string]string)
 
-	answer, err := question.AskUserTagsConfirmation(testEC2, userTags)
+	answer, err := question.AskUserTagsConfirmation(testEC2, testQMHelper, userTags)
 	th.Equals(t, expectedConfirmation, answer)
 
 	th.Ok(t, err)
@@ -1078,7 +1086,7 @@ func TestAskUserTags(t *testing.T) {
 
 	userTags := make(map[string]string)
 
-	answer, err := question.AskUserTags(testEC2, userTags)
+	answer, err := question.AskUserTags(testEC2, testQMHelper, userTags)
 	th.Equals(t, expectedTags, answer)
 
 	th.Ok(t, err)
@@ -1123,7 +1131,7 @@ func TestAskRegion_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskRegion(testEC2, defaultRegion)
+	answer, err := question.AskRegion(testEC2, testQMHelper, defaultRegion)
 	th.Ok(t, err)
 
 	th.Equals(t, defaultRegion, *answer)
@@ -1150,7 +1158,7 @@ func TestAskLaunchTemplate_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskLaunchTemplate(testEC2, defaultTemplateId)
+	answer, err := question.AskLaunchTemplate(testEC2, testQMHelper, defaultTemplateId)
 	th.Equals(t, defaultTemplateId, *answer)
 
 	th.Ok(t, err)
@@ -1178,7 +1186,7 @@ func TestAskLaunchTemplateVersion_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskLaunchTemplateVersion(testEC2, testTemplateId, strconv.Itoa(defaultVersion))
+	answer, err := question.AskLaunchTemplateVersion(testEC2, testQMHelper, testTemplateId, strconv.Itoa(defaultVersion))
 	th.Ok(t, err)
 	th.Equals(t, strconv.Itoa(defaultVersion), *answer)
 
@@ -1202,7 +1210,7 @@ func TestAskIfEnterInstanceType_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskIfEnterInstanceType(testEC2, defaultInstanceType)
+	answer, err := question.AskIfEnterInstanceType(testEC2, testQMHelper, defaultInstanceType)
 	th.Ok(t, err)
 	th.Equals(t, defaultInstanceType, *answer)
 
@@ -1226,7 +1234,7 @@ func TestAskInstanceType_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskInstanceType(testEC2, defaultInstanceType)
+	answer, err := question.AskInstanceType(testEC2, testQMHelper, defaultInstanceType)
 	th.Ok(t, err)
 	th.Equals(t, defaultInstanceType, *answer)
 
@@ -1262,7 +1270,7 @@ func TestAskImage_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskImage(testEC2, testInstanceType, defaultImage)
+	answer, err := question.AskImage(testEC2, testQMHelper, testInstanceType, defaultImage)
 	th.Ok(t, err)
 	th.Equals(t, defaultImage, *answer.ImageId)
 
@@ -1294,7 +1302,7 @@ func TestAskIamProfile_WithDefault(t *testing.T) {
 	iam := &iamhelper.IAMHelper{Client: mockedIam}
 	initQuestionTest(t, "\n")
 
-	answer, err := question.AskIamProfile(iam, defaultProfileName)
+	answer, err := question.AskIamProfile(testQMHelper, iam, defaultProfileName)
 	th.Ok(t, err)
 	th.Equals(t, defaultProfileName, answer)
 
@@ -1336,7 +1344,7 @@ func TestAskVpc_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskVpc(testEC2, defaultVpc)
+	answer, err := question.AskVpc(testEC2, testQMHelper, defaultVpc)
 	th.Ok(t, err)
 	th.Equals(t, defaultVpc, *answer)
 
@@ -1383,7 +1391,7 @@ func TestAskSubnet_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskSubnet(testEC2, testVpc, defaultSubnet)
+	answer, err := question.AskSubnet(testEC2, testQMHelper, testVpc, defaultSubnet)
 	th.Ok(t, err)
 	th.Equals(t, defaultSubnet, *answer)
 
@@ -1415,7 +1423,7 @@ func TestAskSubnetPlaceholder_WithDefault(t *testing.T) {
 		},
 	}
 
-	answer, err := question.AskSubnetPlaceholder(testEC2, defaultAz)
+	answer, err := question.AskSubnetPlaceholder(testEC2, testQMHelper, defaultAz)
 	th.Ok(t, err)
 	th.Equals(t, defaultAz, *answer)
 
@@ -1427,7 +1435,7 @@ func TestAskBootScriptConfirmation_WithDefault(t *testing.T) {
 	defaultConfirmation := cli.ResponseYes
 	initQuestionTest(t, "\n")
 
-	confirmation, err := question.AskBootScriptConfirmation(testEC2, defaultBootScript)
+	confirmation, err := question.AskBootScriptConfirmation(testEC2, testQMHelper, defaultBootScript)
 	th.Equals(t, defaultConfirmation, confirmation)
 
 	th.Ok(t, err)
@@ -1442,7 +1450,7 @@ func TestAskBootScript_WithDefault(t *testing.T) {
 	}
 	initQuestionTest(t, "\n")
 
-	answer, err := question.AskBootScript(testEC2, defaultBootScript.Name())
+	answer, err := question.AskBootScript(testEC2, testQMHelper, defaultBootScript.Name())
 	th.Equals(t, defaultBootScript.Name(), answer)
 
 	th.Ok(t, err)
@@ -1456,7 +1464,7 @@ func TestAskUserTagsConfirmation_WithDefault(t *testing.T) {
 	userTags := make(map[string]string)
 	userTags["key"] = "value"
 
-	confirmation, err := question.AskUserTagsConfirmation(testEC2, userTags)
+	confirmation, err := question.AskUserTagsConfirmation(testEC2, testQMHelper, userTags)
 	th.Equals(t, defaultConfirmation, confirmation)
 
 	th.Ok(t, err)
@@ -1474,7 +1482,7 @@ func TestAskUserTags_WithDefault(t *testing.T) {
 	userTags["Key3"] = "Value3"
 	userTags["Key4"] = "Value4"
 
-	answer, err := question.AskUserTags(testEC2, userTags)
+	answer, err := question.AskUserTags(testEC2, testQMHelper, userTags)
 	actualTags := strings.Split(answer, ",")
 
 	th.Assert(t, len(actualTags) == 4, "ActualTags length should be 4")
@@ -1499,7 +1507,7 @@ func TestAskCapacityType_WithDefault(t *testing.T) {
 	defaultCapacity := question.DefaultCapacityTypeText.Spot
 	initQuestionTest(t, "\n")
 
-	answer, err := question.AskCapacityType(testInstanceType, testRegion, defaultCapacity)
+	answer, err := question.AskCapacityType(testQMHelper, testInstanceType, testRegion, defaultCapacity)
 	th.Equals(t, defaultCapacity, answer)
 
 	th.Ok(t, err)
