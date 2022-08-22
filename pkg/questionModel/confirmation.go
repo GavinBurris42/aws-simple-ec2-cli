@@ -146,7 +146,7 @@ func (c *Confirmation) View() string {
 func (c *Confirmation) GetChoice() string { return c.choice }
 
 // getError gets the error from the question if one arose
-func (c *Confirmation) getError() error { return c.err }
+func (c *Confirmation) GetError() error { return c.err }
 
 // SetAllowEdit sets whether the configuration list can be selected or not
 func (c *Confirmation) SetAllowEdit(allowEdit bool) {

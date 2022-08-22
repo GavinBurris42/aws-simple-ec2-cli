@@ -62,7 +62,8 @@ type AskQuestionInput struct {
 }
 
 // Ask for the region to use
-func AskRegion(h *ec2helper.EC2Helper, defaultRegion string) (*string, error) {
+func AskRegion(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultRegion string) (*string, error) {
 	regionDescription := getRegionDescriptions()
 
 	// Get all enabled regions and make sure no error
@@ -97,7 +98,7 @@ func AskRegion(h *ec2helper.EC2Helper, defaultRegion string) (*string, error) {
 	question := "Select a region for the instance:"
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		Rows:           questionModel.CreateSingleLineRows(data),
 		QuestionString: question,
 		DefaultOption:  *defaultOption,
@@ -133,7 +134,8 @@ func getRegionDescriptions() *map[string]string {
 Ask for the launch template to use. The result will either be a launch template id or response.No,
 indicating not using a launch template.
 */
-func AskLaunchTemplate(h *ec2helper.EC2Helper, defaultLaunchTemplateId string) (*string, error) {
+func AskLaunchTemplate(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultLaunchTemplateId string) (*string, error) {
 	// Get all launch templates. If no launch template is available, skip this question
 	launchTemplates, err := h.GetLaunchTemplatesInRegion()
 	if err != nil || len(launchTemplates) <= 0 {
@@ -165,7 +167,7 @@ func AskLaunchTemplate(h *ec2helper.EC2Helper, defaultLaunchTemplateId string) (
 	headers := []string{"Launch Template", "Latest Version"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		DefaultOption:  defaultOption,
 		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
@@ -182,7 +184,8 @@ func AskLaunchTemplate(h *ec2helper.EC2Helper, defaultLaunchTemplateId string) (
 }
 
 // Ask for the launch template version to use. The result will be a launch template version
-func AskLaunchTemplateVersion(h *ec2helper.EC2Helper, launchTemplateId string, defaultTemplateVersion string) (*string, error) {
+func AskLaunchTemplateVersion(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	launchTemplateId string, defaultTemplateVersion string) (*string, error) {
 	launchTemplateVersions, err := h.GetLaunchTemplateVersions(launchTemplateId, nil)
 	if err != nil || launchTemplateVersions == nil {
 		return nil, err
@@ -217,7 +220,7 @@ func AskLaunchTemplateVersion(h *ec2helper.EC2Helper, launchTemplateId string, d
 	headers := []string{"Version Number", "Description"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		DefaultOption:  defaultOption,
 		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
@@ -234,7 +237,8 @@ func AskLaunchTemplateVersion(h *ec2helper.EC2Helper, launchTemplateId string, d
 }
 
 // Ask whether the users want to enter instance type themselves or seek advice
-func AskIfEnterInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) (*string, error) {
+func AskIfEnterInstanceType(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultInstanceType string) (*string, error) {
 	instanceTypes, err := h.GetInstanceTypesInRegion()
 	if err != nil {
 		return nil, err
@@ -267,7 +271,7 @@ func AskIfEnterInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) 
 	question := "How do you want to choose the instance type?"
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
 		DefaultOption:  *defaultOption,
@@ -283,7 +287,8 @@ func AskIfEnterInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) 
 }
 
 // Ask the users to enter instace type
-func AskInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) (*string, error) {
+func AskInstanceType(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultInstanceType string) (*string, error) {
 	instanceTypes, err := h.GetInstanceTypesInRegion()
 	if err != nil {
 		return nil, err
@@ -322,7 +327,7 @@ func AskInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) (*strin
 	}
 
 	model := &questionModel.PlainText{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  *defaultOption,
 		EC2Helper:      h,
@@ -338,11 +343,11 @@ func AskInstanceType(h *ec2helper.EC2Helper, defaultInstanceType string) (*strin
 }
 
 // Ask the users to enter instance type vCPUs
-func AskInstanceTypeVCpu(h *ec2helper.EC2Helper) (string, error) {
+func AskInstanceTypeVCpu(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper) (string, error) {
 	question := "Enter the number of vCPUs to be used:"
 
 	model := &questionModel.PlainText{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  "2",
 		EC2Helper:      h,
@@ -357,11 +362,11 @@ func AskInstanceTypeVCpu(h *ec2helper.EC2Helper) (string, error) {
 }
 
 // Ask the users to enter instace type memory
-func AskInstanceTypeMemory(h *ec2helper.EC2Helper) (string, error) {
+func AskInstanceTypeMemory(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper) (string, error) {
 	question := "Enter the amount of memory(in GiB) to be used:"
 
 	model := &questionModel.PlainText{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  "2",
 		EC2Helper:      h,
@@ -376,7 +381,8 @@ func AskInstanceTypeMemory(h *ec2helper.EC2Helper) (string, error) {
 }
 
 // Ask the users to select an instance type given the options from Instance Selector
-func AskInstanceTypeInstanceSelector(h *ec2helper.EC2Helper, instanceSelector ec2helper.InstanceSelector,
+func AskInstanceTypeInstanceSelector(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	instanceSelector ec2helper.InstanceSelector,
 	vcpus, memory string) (*string, error) {
 	// Parse string to numbers
 	vcpusInt, err := strconv.Atoi(vcpus)
@@ -417,7 +423,7 @@ func AskInstanceTypeInstanceSelector(h *ec2helper.EC2Helper, instanceSelector ec
 	headers := []string{"Instance Type", "vCPUs", "Memory", "Instance Storage"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
 		Rows:           questionModel.CreateSingleLineRows(data),
@@ -436,7 +442,8 @@ func AskInstanceTypeInstanceSelector(h *ec2helper.EC2Helper, instanceSelector ec
 Ask the users to select an image. This function is different from other question-asking functions.
 It returns not a string but an ec2.Image object
 */
-func AskImage(h *ec2helper.EC2Helper, instanceType string, defaultImageId string) (*ec2.Image, error) {
+func AskImage(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	instanceType string, defaultImageId string) (*ec2.Image, error) {
 	// get info about the instance type
 	instanceTypeInfo, err := h.GetInstanceType(instanceType)
 	if err != nil {
@@ -496,7 +503,7 @@ func AskImage(h *ec2helper.EC2Helper, instanceType string, defaultImageId string
 	question := "Select an AMI for the instance:"
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		HeaderStrings:  headers,
 		QuestionString: question,
 		DefaultOption:  defaultOption,
@@ -525,9 +532,9 @@ func AskImage(h *ec2helper.EC2Helper, instanceType string, defaultImageId string
 }
 
 // Ask if the users want to keep EBS volumes after instance termination
-func AskKeepEbsVolume(defaultKeepEbs bool) (string, error) {
+func AskKeepEbsVolume(qh *questionModel.QuestionModelHelper, defaultKeepEbs bool) (string, error) {
 	question := "Persist EBS Volume(s) after the instance is terminated?"
-	answer, err := questionModel.AskYesNoQuestion(question, defaultKeepEbs)
+	answer, err := questionModel.AskYesNoQuestion(qh, question, defaultKeepEbs)
 
 	if err != nil {
 		return "", err
@@ -537,7 +544,7 @@ func AskKeepEbsVolume(defaultKeepEbs bool) (string, error) {
 }
 
 // Ask if the users want to attach IAM profile to instance
-func AskIamProfile(i *iamhelper.IAMHelper, defaultIamProfile string) (string, error) {
+func AskIamProfile(qh *questionModel.QuestionModelHelper, i *iamhelper.IAMHelper, defaultIamProfile string) (string, error) {
 	input := &iam.ListInstanceProfilesInput{
 		MaxItems: aws.Int64(10),
 	}
@@ -591,7 +598,7 @@ func AskIamProfile(i *iamhelper.IAMHelper, defaultIamProfile string) (string, er
 	headers := []string{"PROFILE NAME", "PROFILE ID", "Creation Date"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  defaultOptionValue,
 		IndexedOptions: indexedOptions,
@@ -607,7 +614,8 @@ func AskIamProfile(i *iamhelper.IAMHelper, defaultIamProfile string) (string, er
 }
 
 // Ask if the users want to set an auto-termination timer for the instance
-func AskAutoTerminationTimerMinutes(h *ec2helper.EC2Helper, defaultTimer int) (string, error) {
+func AskAutoTerminationTimerMinutes(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultTimer int) (string, error) {
 	question := "After how many minutes should the instance terminate? (0 for no auto-termination)"
 	defaultOption := strconv.FormatInt(int64(0), 10)
 	if defaultTimer != 0 {
@@ -615,7 +623,7 @@ func AskAutoTerminationTimerMinutes(h *ec2helper.EC2Helper, defaultTimer int) (s
 	}
 
 	model := &questionModel.PlainText{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  defaultOption,
 		EC2Helper:      h,
@@ -630,7 +638,7 @@ func AskAutoTerminationTimerMinutes(h *ec2helper.EC2Helper, defaultTimer int) (s
 }
 
 // Ask the users to select a VPC
-func AskVpc(h *ec2helper.EC2Helper, defaultVpcId string) (*string, error) {
+func AskVpc(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper, defaultVpcId string) (*string, error) {
 	vpcs, err := h.GetAllVpcs()
 	if err != nil {
 		return nil, err
@@ -666,7 +674,7 @@ func AskVpc(h *ec2helper.EC2Helper, defaultVpcId string) (*string, error) {
 	headers := []string{"VPC", "CIDR Block"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  defaultOptionValue,
 		IndexedOptions: indexedOptions,
@@ -683,7 +691,8 @@ func AskVpc(h *ec2helper.EC2Helper, defaultVpcId string) (*string, error) {
 }
 
 // Ask the users to select a subnet
-func AskSubnet(h *ec2helper.EC2Helper, vpcId string, defaultSubnetId string) (*string, error) {
+func AskSubnet(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	vpcId string, defaultSubnetId string) (*string, error) {
 	subnets, err := h.GetSubnetsByVpc(vpcId)
 	if err != nil {
 		return nil, err
@@ -717,7 +726,7 @@ func AskSubnet(h *ec2helper.EC2Helper, vpcId string, defaultSubnetId string) (*s
 	headers := []string{"Subnet", "Availability Zone", "CIDR Block"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  *defaultOptionValue,
 		IndexedOptions: indexedOptions,
@@ -734,7 +743,8 @@ func AskSubnet(h *ec2helper.EC2Helper, vpcId string, defaultSubnetId string) (*s
 }
 
 // Ask the users to select a subnet placeholder
-func AskSubnetPlaceholder(h *ec2helper.EC2Helper, defaultAzId string) (*string, error) {
+func AskSubnetPlaceholder(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultAzId string) (*string, error) {
 	availabilityZones, err := h.GetAvailableAvailabilityZones()
 	if err != nil {
 		return nil, err
@@ -762,7 +772,7 @@ func AskSubnetPlaceholder(h *ec2helper.EC2Helper, defaultAzId string) (*string, 
 	headers := []string{"Zone Name", "Zone ID"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  *defaultOptionValue,
 		IndexedOptions: indexedOptions,
@@ -779,7 +789,8 @@ func AskSubnetPlaceholder(h *ec2helper.EC2Helper, defaultAzId string) (*string, 
 }
 
 // Ask the users to select security groups
-func AskSecurityGroups(groups []*ec2.SecurityGroup, defaultSecurityGroups []*ec2.SecurityGroup) ([]string, error) {
+func AskSecurityGroups(qh *questionModel.QuestionModelHelper,
+	groups []*ec2.SecurityGroup, defaultSecurityGroups []*ec2.SecurityGroup) ([]string, error) {
 	question := "Select the security groups for the instance:"
 	data := [][]string{}
 	indexedOptions := []string{}
@@ -811,7 +822,7 @@ func AskSecurityGroups(groups []*ec2.SecurityGroup, defaultSecurityGroups []*ec2
 	headers := []string{"Security Group", "Description"}
 
 	model := &questionModel.MultiSelectList{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString:    question,
 		DefaultOptionList: defaultOptionList,
 		IndexedOptions:    indexedOptions,
@@ -827,7 +838,7 @@ func AskSecurityGroups(groups []*ec2.SecurityGroup, defaultSecurityGroups []*ec2
 }
 
 // Ask the users to select a security group placeholder
-func AskSecurityGroupPlaceholder() (string, error) {
+func AskSecurityGroupPlaceholder(qh *questionModel.QuestionModelHelper) (string, error) {
 	data := [][]string{}
 	rows := []questionModel.Row{}
 	_ = rows
@@ -842,7 +853,7 @@ func AskSecurityGroupPlaceholder() (string, error) {
 	question := "Select the security group for the new VPC:"
 
 	model := &questionModel.SingleSelectList{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		IndexedOptions: indexedOptions,
 		Rows:           questionModel.CreateSingleLineRows(data),
@@ -856,7 +867,7 @@ func AskSecurityGroupPlaceholder() (string, error) {
 }
 
 // Print confirmation information for instance launch and ask for confirmation
-func AskConfirmationWithTemplate(h *ec2helper.EC2Helper,
+func AskConfirmationWithTemplate(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
 	simpleConfig *config.SimpleInfo) (*string, error) {
 	versions, err := h.GetLaunchTemplateVersions(simpleConfig.LaunchTemplateId,
 		&simpleConfig.LaunchTemplateVersion)
@@ -902,7 +913,7 @@ func AskConfirmationWithTemplate(h *ec2helper.EC2Helper,
 	// Append all EBS blocks, if applicable
 	data = table.AppendTemplateEbs(data, templateData.BlockDeviceMappings)
 
-	answer, err := askConfigTableQuestion(data)
+	answer, err := askConfigTableQuestion(qh, data)
 
 	if err != nil {
 		return nil, err
@@ -912,8 +923,8 @@ func AskConfirmationWithTemplate(h *ec2helper.EC2Helper,
 }
 
 // Print confirmation information for instance launch and ask for confirmation
-func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *config.DetailedInfo,
-	allowEdit bool) (string, error) {
+func AskConfirmationWithInput(qh *questionModel.QuestionModelHelper, simpleConfig *config.SimpleInfo,
+	detailedConfig *config.DetailedInfo, allowEdit bool) (string, error) {
 	// If new subnets will be created, skip formatting the subnet info.
 	subnetInfo := "New Subnet"
 	subnet := detailedConfig.Subnet
@@ -1044,7 +1055,7 @@ func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *c
 
 	model := &questionModel.Confirmation{}
 	model.SetAllowEdit(allowEdit)
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		IndexedOptions: indexedOptions,
 		Rows:           rows,
 	})
@@ -1057,9 +1068,9 @@ func AskConfirmationWithInput(simpleConfig *config.SimpleInfo, detailedConfig *c
 }
 
 // Ask if the user wants to save the config as a JSON config file
-func AskSaveConfig() (string, error) {
+func AskSaveConfig(qh *questionModel.QuestionModelHelper) (string, error) {
 	question := "Do you want to save the configuration above as a JSON file that can be used in non-interactive mode and as question defaults? "
-	answer, err := questionModel.AskYesNoQuestion(question, false)
+	answer, err := questionModel.AskYesNoQuestion(qh, question, false)
 
 	if err != nil {
 		return "", err
@@ -1069,7 +1080,7 @@ func AskSaveConfig() (string, error) {
 }
 
 // Ask the instance id to be connected
-func AskInstanceId(h *ec2helper.EC2Helper) (*string, error) {
+func AskInstanceId(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper) (*string, error) {
 	// Only include running states
 	states := []string{
 		ec2.InstanceStateNameRunning,
@@ -1094,7 +1105,7 @@ func AskInstanceId(h *ec2helper.EC2Helper) (*string, error) {
 	question := "Select the instance you want to connect to: "
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		Rows:           rows,
 		QuestionString: question,
 		HeaderStrings:  headers,
@@ -1106,7 +1117,7 @@ func AskInstanceId(h *ec2helper.EC2Helper) (*string, error) {
 }
 
 // Ask the instance IDs to be terminated
-func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) ([]string, error) {
+func AskInstanceIds(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper, addedInstanceIds []string) ([]string, error) {
 	// Only include non-terminated states
 	states := []string{
 		ec2.InstanceStateNamePending,
@@ -1141,7 +1152,7 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) ([]string
 	question := "Select the instances you want to terminate: "
 
 	model := &questionModel.MultiSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		HeaderStrings:  headers,
 		IndexedOptions: indexedOptions,
@@ -1153,9 +1164,10 @@ func AskInstanceIds(h *ec2helper.EC2Helper, addedInstanceIds []string) ([]string
 }
 
 // AskBootScriptConfirmation confirms if the user should be prompted to enter in a bootscript
-func AskBootScriptConfirmation(h *ec2helper.EC2Helper, defaultBootScript string) (string, error) {
+func AskBootScriptConfirmation(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultBootScript string) (string, error) {
 	question := "Would you like to add a filepath to the instance boot script?"
-	answer, err := questionModel.AskYesNoQuestion(question, defaultBootScript != "")
+	answer, err := questionModel.AskYesNoQuestion(qh, question, defaultBootScript != "")
 
 	if err != nil {
 		return "", err
@@ -1165,7 +1177,7 @@ func AskBootScriptConfirmation(h *ec2helper.EC2Helper, defaultBootScript string)
 }
 
 // AskBootScript prompts the user for a filepath to an optional boot script
-func AskBootScript(h *ec2helper.EC2Helper, defaultBootScript string) (string, error) {
+func AskBootScript(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper, defaultBootScript string) (string, error) {
 	question := "Enter a filepath to instance boot script. Enter \"None\" for no bootscript:"
 
 	noEntryValidation := func(h *ec2helper.EC2Helper, filepath string) bool {
@@ -1173,7 +1185,7 @@ func AskBootScript(h *ec2helper.EC2Helper, defaultBootScript string) (string, er
 	}
 
 	model := &questionModel.PlainText{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  defaultBootScript,
 		EC2Helper:      h,
@@ -1188,9 +1200,10 @@ func AskBootScript(h *ec2helper.EC2Helper, defaultBootScript string) (string, er
 }
 
 // AskUserTagsConfirmation confirms if the user should be prompted to enter in tags
-func AskUserTagsConfirmation(h *ec2helper.EC2Helper, defaultTags map[string]string) (string, error) {
+func AskUserTagsConfirmation(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultTags map[string]string) (string, error) {
 	question := "Would you like to add tags to instances and persisted volumes?"
-	answer, err := questionModel.AskYesNoQuestion(question, len(defaultTags) != 0)
+	answer, err := questionModel.AskYesNoQuestion(qh, question, len(defaultTags) != 0)
 
 	if err != nil {
 		return "", err
@@ -1200,7 +1213,8 @@ func AskUserTagsConfirmation(h *ec2helper.EC2Helper, defaultTags map[string]stri
 }
 
 // AskUserTags prompts the user for optional tags
-func AskUserTags(h *ec2helper.EC2Helper, defaultTags map[string]string) (string, error) {
+func AskUserTags(h *ec2helper.EC2Helper, qh *questionModel.QuestionModelHelper,
+	defaultTags map[string]string) (string, error) {
 	question := "Enter Key/Value pairs to add tags to instances and persisted volumes:"
 	kvs := make([]string, 0, len(defaultTags))
 	for key, value := range defaultTags {
@@ -1209,7 +1223,7 @@ func AskUserTags(h *ec2helper.EC2Helper, defaultTags map[string]string) (string,
 	defaultOption := strings.Join(kvs, ",")
 
 	model := &questionModel.KeyValue{}
-	err := questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err := qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  defaultOption,
 	})
@@ -1222,9 +1236,9 @@ func AskUserTags(h *ec2helper.EC2Helper, defaultTags map[string]string) (string,
 }
 
 // AskTerminationConfirmation confirms if the user wants to terminate the selected instanceIds
-func AskTerminationConfirmation(instanceIds []string) (string, error) {
+func AskTerminationConfirmation(qh *questionModel.QuestionModelHelper, instanceIds []string) (string, error) {
 	question := fmt.Sprintf("Are you sure you want to terminate %d instance(s): %s ", len(instanceIds), instanceIds)
-	answer, err := questionModel.AskYesNoQuestion(question, false)
+	answer, err := questionModel.AskYesNoQuestion(qh, question, false)
 
 	if err != nil {
 		return "", err
@@ -1237,7 +1251,8 @@ func AskTerminationConfirmation(instanceIds []string) (string, error) {
 AskCapacityType asks the capacity type of the instance, either Spot or On-Demand. The user is informed of the
 pricing of each type before selection.
 */
-func AskCapacityType(instanceType string, region string, defaultCapacityType string) (string, error) {
+func AskCapacityType(qh *questionModel.QuestionModelHelper, instanceType string,
+	region string, defaultCapacityType string) (string, error) {
 	ec2Pricing := ec2pricing.New(session.New().Copy(aws.NewConfig().WithRegion(region)))
 	onDemandPrice, err := ec2Pricing.GetOnDemandInstanceTypeCost(instanceType)
 	formattedOnDemandPrice := "N/A"
@@ -1267,7 +1282,7 @@ func AskCapacityType(instanceType string, region string, defaultCapacityType str
 	headers := []string{"Capacity Type", "Price"}
 
 	model := &questionModel.SingleSelectList{}
-	err = questionModel.AskQuestion(model, &questionModel.QuestionInput{
+	err = qh.Svc.AskQuestion(model, &questionModel.QuestionInput{
 		QuestionString: question,
 		DefaultOption:  defaultOption,
 		IndexedOptions: indexedOptions,
@@ -1283,7 +1298,7 @@ func AskCapacityType(instanceType string, region string, defaultCapacityType str
 }
 
 // askConfigTableQuestion asks the user to create an instance based on given configurations
-func askConfigTableQuestion(tableData [][]string) (string, error) {
+func askConfigTableQuestion(qh *questionModel.QuestionModelHelper, tableData [][]string) (string, error) {
 	question := "Please confirm if you would like to launch instance with following options:"
 	headers := []string{"Configurations", "Values"}
 
@@ -1294,7 +1309,7 @@ func askConfigTableQuestion(tableData [][]string) (string, error) {
 		Rows:           questionModel.CreateSingleLineRows(tableData),
 	})
 
-	answer, err := questionModel.AskYesNoQuestion(configList.PrintTable(), false)
+	answer, err := questionModel.AskYesNoQuestion(qh, configList.PrintTable(), false)
 
 	if err != nil {
 		return "", err

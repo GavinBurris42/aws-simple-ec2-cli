@@ -270,7 +270,7 @@ func (kv *KeyValue) focusInput(focusIndex int) tea.Cmd {
 }
 
 // getError gets the error from the question if one arose
-func (kv *KeyValue) getError() error { return kv.err }
+func (kv *KeyValue) GetError() error { return kv.err }
 
 // TagsToString returns a string value of the created tags
 func (kv *KeyValue) TagsToString() string {

@@ -60,6 +60,8 @@ type CheckInput func(*ec2helper.EC2Helper, string) bool
 
 type Row [][]string
 
+type AskQuestionStruct struct{}
+
 // QuestionInput represents input that can be used to initialize each question
 type QuestionInput struct {
 	DefaultOption     string               // Defaulted set/selected answer
@@ -76,12 +78,12 @@ type QuestionInput struct {
 questionModel represents a question. Builds on BubbleTea's tea.Model interface to allow
 for the initialization of a question model and to retrieve any errors that may occur
 */
-type questionModel interface {
+type QuestionModel interface {
 	InitializeModel(input *QuestionInput)
 	Init() tea.Cmd
 	Update(msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
-	getError() error
+	GetError() error
 }
 
 // item represents an item, or row, in a list
@@ -122,13 +124,13 @@ AskQuestion initializes the given question model with question input and asks th
 when answer is given, or user exits out of the question. Returns the error from the question
 model.
 */
-func AskQuestion(model questionModel, questionInput *QuestionInput) error {
+func (a *AskQuestionStruct) AskQuestion(model QuestionModel, questionInput *QuestionInput) error {
 	fmt.Println()
 	model.InitializeModel(questionInput)
 	p := tea.NewProgram(model)
 	err := p.Start()
-	if model.getError() != nil {
-		err = model.getError()
+	if model.GetError() != nil {
+		err = model.GetError()
 	}
 	return err
 }
@@ -346,14 +348,15 @@ func CreateSingleLineRows(data [][]string) []Row {
 }
 
 // askYesNoQuestion asks a yes or no question
-func AskYesNoQuestion(question string, defaultToYes bool) (string, error) {
+func AskYesNoQuestion(qh *QuestionModelHelper, question string,
+	defaultToYes bool) (string, error) {
 	defaultOption := cli.ResponseNo
 	if defaultToYes {
 		defaultOption = cli.ResponseYes
 	}
 
 	model := &SingleSelectList{}
-	err := AskQuestion(model, &QuestionInput{
+	err := qh.Svc.AskQuestion(model, &QuestionInput{
 		QuestionString: question,
 		IndexedOptions: yesNoOptions,
 		DefaultOption:  defaultOption,

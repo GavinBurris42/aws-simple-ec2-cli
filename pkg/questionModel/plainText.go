@@ -104,7 +104,7 @@ func (pt *PlainText) View() string {
 }
 
 // getError gets the error from the question if one arose
-func (pt *PlainText) getError() error { return pt.err }
+func (pt *PlainText) GetError() error { return pt.err }
 
 // isValidInput determines whether the answer is valid based on PlainText's validFunctions attribute
 func (pt *PlainText) isValidInput(answer string) bool {
